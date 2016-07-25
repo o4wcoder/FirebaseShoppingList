@@ -1,12 +1,11 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.1"
 
     defaultConfig {
-        applicationId "com.udacity.firebase.shoppinglistplusplus"
+        applicationId "com.fourthwardmobile.android.firebaseshoppinglist"
         minSdkVersion 15
         targetSdkVersion 23
         versionCode 1
@@ -18,22 +17,17 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
+
         }
     }
 
-    /* This for anyone following along with the repo. Since you will have a different
-     * root URL, this code loads up a value from your gradle.properties file.
-     */
-
-    buildTypes.each {
-        it.buildConfigField 'String', 'UNIQUE_FIREBASE_ROOT_URL', UniqueFirebaseRootUrl
-    }
 
     packagingOptions {
         exclude 'META-INF/LICENSE'
         exclude 'META-INF/LICENSE-FIREBASE.txt'
         exclude 'META-INF/NOTICE'
     }
+
 
 }
 
@@ -44,13 +38,12 @@ dependencies {
     compile 'com.android.support:support-v4:23.0.1'
     compile 'com.android.support:cardview-v7:23.0.1'
 
-    /* Firebase SDK */
+    /* Firebase */
     compile 'com.firebase:firebase-client-android:2.4.0'
 
-    /* Firebase UI */
-    compile 'com.firebaseui:firebase-ui:0.2.2'
-
     /* For Google Play Services */
-    compile 'com.google.android.gms:play-services-safetynet:8.3.0'
-    compile 'com.google.android.gms:play-services-auth:8.3.0'
+    compile 'com.google.android.gms:play-services-safetynet:9.0.1'
+    compile 'com.google.android.gms:play-services-auth:9.0.1'
+
+    apply plugin: 'com.google.gms.google-services'
 }
