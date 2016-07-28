@@ -29,12 +29,13 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
     /***************************************************************************************/
     private String mListName;
 
+
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
-    public static EditListNameDialogFragment newInstance(ShoppingList shoppingList) {
+    public static EditListNameDialogFragment newInstance(ShoppingList shoppingList, String listId) {
         EditListNameDialogFragment editListNameDialogFragment = new EditListNameDialogFragment();
-        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList, R.layout.dialog_edit_list);
+        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList, R.layout.dialog_edit_list,listId);
 
         //Add list name to the bundle
         bundle.putString(Constants.KEY_LIST_NAME,shoppingList.getListName());
@@ -77,15 +78,15 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
 
         //Make sure text is n ot empty
         if(!inputListName.equals("")) {
-
+            Log.e(TAG,"inputListName is not null");
             //Make sure list name from db is not null
-            if(mListName != null) {
+            if(mListName != null && mListId != null) {
 
                 //Make sure text has changed
                 if(!inputListName.equals(mListName)) {
-
+                    Log.e(TAG,"Edit list at key mListId = " +mListId);
                     //Get Firebase ref
-                    Firebase shoppingListRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS);
+                   Firebase shoppingListRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS).child(mListId);
 
                     //Make hashmap for the specific properties that are changing
                     HashMap<String,Object> updateProperties = new HashMap<>();
@@ -102,6 +103,8 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
                 }
 
 
+            } else {
+                Log.e(TAG,"list name or list id is null");
             }
         }
 

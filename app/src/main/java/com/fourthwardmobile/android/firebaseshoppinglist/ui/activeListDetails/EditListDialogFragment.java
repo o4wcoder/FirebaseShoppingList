@@ -31,6 +31,7 @@ public abstract class EditListDialogFragment extends DialogFragment {
 
     EditText mEditTextForList;
     int mResource;
+    String mListId;
 
     /**
      * Helper method that creates a basic bundle of all of the information needed to change
@@ -40,9 +41,10 @@ public abstract class EditListDialogFragment extends DialogFragment {
      * @param resource
      * @return
      */
-    protected static Bundle newInstanceHelper(ShoppingList shoppingList, int resource) {
+    protected static Bundle newInstanceHelper(ShoppingList shoppingList, int resource, String listId) {
         Bundle bundle = new Bundle();
         bundle.putInt(Constants.KEY_LAYOUT_RESOURCE, resource);
+        bundle.putString(Constants.KEY_LIST_ID,listId);
         return bundle;
     }
 
@@ -54,6 +56,7 @@ public abstract class EditListDialogFragment extends DialogFragment {
         super.onCreate(savedInstanceState);
         Log.e(TAG,"onCreate()");
         mResource = getArguments().getInt(Constants.KEY_LAYOUT_RESOURCE);
+        mListId = getArguments().getString(Constants.KEY_LIST_ID);
     }
 
     /**

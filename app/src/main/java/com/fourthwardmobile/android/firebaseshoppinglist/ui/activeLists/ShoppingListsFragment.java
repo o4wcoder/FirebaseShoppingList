@@ -35,9 +35,10 @@ public class ShoppingListsFragment extends Fragment {
     private static final String TAG = ShoppingListsFragment.class.getSimpleName();
 
     private ListView mListView;
-    private TextView mListNameTextView;
-    private TextView mOwnerTextView;
-    private TextView mTimestampTextView;
+//    private TextView mListNameTextView;
+//    private TextView mOwnerTextView;
+//    private TextView mTimestampTextView;
+    private ActiveListAdapter mActiveListAdapter;
 
     public ShoppingListsFragment() {
         /* Required empty public constructor */
@@ -52,12 +53,6 @@ public class ShoppingListsFragment extends Fragment {
         Bundle args = new Bundle();
         fragment.setArguments(args);
         return fragment;
-    }
-    
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
     }
 
     /**
@@ -80,32 +75,36 @@ public class ShoppingListsFragment extends Fragment {
         initializeScreen(rootView);
 
         //Add listener to read from database when data has changed
-        Firebase listNameRef = new Firebase(Constants.FIREBASE_URL).child(Constants.FIREBASE_LOCATION_ACTIVE_LISTS);
-        listNameRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                Log.e(TAG,"The data changed");
-                //Get the name of the list
-                ShoppingList shoppingList = dataSnapshot.getValue(ShoppingList.class);
-                if(shoppingList != null) {
-                    mListNameTextView.setText(shoppingList.getListName());
-                    mOwnerTextView.setText(shoppingList.getOwner());
-                    if(shoppingList.getTimestampLastChanged() != null) {
-                        String strDate = Utils.SIMPLE_DATE_FORMAT.format(new Date(shoppingList.getTimestampLastChangedLong()));
-                        mTimestampTextView.setText(String.valueOf(strDate));
-                    }
-                }
-                else {
-                    mTimestampTextView.setText("");
-                }
-            }
+       // Firebase listNameRef = new Firebase(Constants.FIREBASE_URL).child(Constants.FIREBASE_LOCATION_ACTIVE_LISTS);
+        Firebase activeListsRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS);
+//        listNameRef.addValueEventListener(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                Log.e(TAG,"The data changed");
+//                //Get the name of the list
+//                ShoppingList shoppingList = dataSnapshot.getValue(ShoppingList.class);
+//                if(shoppingList != null) {
+//                    mListNameTextView.setText(shoppingList.getListName());
+//                    mOwnerTextView.setText(shoppingList.getOwner());
+//                    if(shoppingList.getTimestampLastChanged() != null) {
+//                        String strDate = Utils.SIMPLE_DATE_FORMAT.format(new Date(shoppingList.getTimestampLastChangedLong()));
+//                        mTimestampTextView.setText(String.valueOf(strDate));
+//                    }
+//                }
+//                else {
+//                    mTimestampTextView.setText("");
+//                }
+//            }
+//
+//            @Override
+//            public void onCancelled(FirebaseError firebaseError) {
+//
+//            }
+//        });
 
-            @Override
-            public void onCancelled(FirebaseError firebaseError) {
-
-            }
-        });
-
+        //Set up adapter
+        mActiveListAdapter = new ActiveListAdapter(getActivity(),ShoppingList.class,R.layout.single_active_list,activeListsRef);
+        mListView.setAdapter(mActiveListAdapter);
         /**
          * Set interactive bits, such as click events and adapters
          */
@@ -113,24 +112,35 @@ public class ShoppingListsFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
+                ShoppingList selectedList = mActiveListAdapter.getItem(position);
+
+                if(selectedList != null) {
+                    Intent intent = new Intent(getActivity(), ActiveListDetailsActivity.class);
+
+                    String key = mActiveListAdapter.getRef(position).getKey();
+                    Log.e(TAG, "Got key = " + key);
+                    intent.putExtra(Constants.KEY_LIST_ID, key);
+                    startActivity(intent);
+                }
 
             }
         });
 
-        mListNameTextView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.e(TAG,"onItemClick()");
-                Intent intent = new Intent(getActivity(),ActiveListDetailsActivity.class);
-                startActivity(intent);
-            }
-        });
+//        mListNameTextView.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.e(TAG,"onItemClick()");
+//                Intent intent = new Intent(getActivity(),ActiveListDetailsActivity.class);
+//                startActivity(intent);
+//            }
+//        });
         return rootView;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        mActiveListAdapter.cleanup();
     }
 
 
@@ -139,8 +149,8 @@ public class ShoppingListsFragment extends Fragment {
      */
     private void initializeScreen(View rootView) {
         mListView = (ListView) rootView.findViewById(R.id.list_view_active_lists);
-        mListNameTextView = (TextView) rootView.findViewById(R.id.text_view_list_name);
-        mOwnerTextView = (TextView) rootView.findViewById(R.id.text_view_created_by_user);
-        mTimestampTextView = (TextView) rootView.findViewById(R.id.text_view_edit_time);
+//        mListNameTextView = (TextView) rootView.findViewById(R.id.text_view_list_name);
+//        mOwnerTextView = (TextView) rootView.findViewById(R.id.text_view_created_by_user);
+//        mTimestampTextView = (TextView) rootView.findViewById(R.id.text_view_edit_time);
     }
 }
