@@ -75,6 +75,7 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
                         .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
                                 removeItem(itemToRemoveId);
+
                             }
                         })
                         .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
