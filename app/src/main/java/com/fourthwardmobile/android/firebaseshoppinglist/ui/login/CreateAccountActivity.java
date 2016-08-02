@@ -25,6 +25,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.Map;
 
@@ -39,6 +40,7 @@ public class CreateAccountActivity extends BaseActivity {
 
     //Firebase Authentication
     private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +52,24 @@ public class CreateAccountActivity extends BaseActivity {
          * Link layout elements from XML and setup the progress dialog
          */
         initializeScreen();
+
+        //Respond to changes in the user's sign-in state
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+
+                if(user != null) {
+                    //User is signed in
+                    Log.e(TAG, "onAuthStateChanged() Signed in user " + user.getUid());
+                } else {
+                    // User is signed out
+                    Log.e(TAG,"onAuthStateChanged() Singed out user ");
+                }
+            }
+        };
 
     }
 
@@ -119,7 +139,11 @@ public class CreateAccountActivity extends BaseActivity {
                             Log.e(TAG,"createUserWithEmail:onComplete " + task.isSuccessful());
 
                             if(!task.isSuccessful()) {
-                                showErrorToast("Create Account failed with result = " + task.getResult());
+
+                                showErrorToast("Create Account failed");
+//                                AuthResult result = task.getResult();
+//
+//                                Log.e(TAG,"Failure result = " + result.toString());
                             }
 
                             mAuthProgressDialog.dismiss();

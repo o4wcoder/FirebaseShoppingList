@@ -4,6 +4,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -28,6 +29,11 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.io.IOException;
 
@@ -40,6 +46,9 @@ public class LoginActivity extends BaseActivity {
     /* A dialog that is presented until the Firebase authentication finished. */
     private ProgressDialog mAuthProgressDialog;
     private EditText mEditTextEmailInput, mEditTextPasswordInput;
+
+    private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
 
     /**
      * Variables related to Google Login
@@ -56,6 +65,8 @@ public class LoginActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        //Get Firebase instance to Authentication login
+        mAuth = FirebaseAuth.getInstance();
         /**
          * Link layout elements from XML and setup progress dialog
          */
@@ -74,6 +85,40 @@ public class LoginActivity extends BaseActivity {
                 return true;
             }
         });
+
+        //Respond to changes in the user's sign-in state
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+
+                if(user != null) {
+                    //User is signed in
+                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getUid());
+                } else {
+                    // User is signed out
+                    Log.e(LOG_TAG,"onAuthStateChanged() Singed out user ");
+                }
+            }
+        };
+
+
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mAuth.addAuthStateListener(mAuthListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mAuthListener != null) {
+            mAuth.removeAuthStateListener(mAuthListener);
+        }
     }
 
     @Override
@@ -133,6 +178,24 @@ public class LoginActivity extends BaseActivity {
      * Sign in with Password provider (used when user taps "Done" action on keyboard)
      */
     public void signInPassword() {
+
+        String email = mEditTextEmailInput.getText().toString();
+        String password = mEditTextPasswordInput.getText().toString();
+
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.e(LOG_TAG,"signInWithEmail:onComplete(): " + task.isSuccessful());
+
+                        //If sign in fails, display a message to the user. If sign in succeeds
+                        //the auth sate listener will be notified and handled
+                        if(!task.isSuccessful()) {
+                            Log.e(LOG_TAG,"signInWithEmail:failed, " + task.getException());
+                            showErrorToast("Login failed");
+                        }
+                    }
+                });
     }
 
     /**
