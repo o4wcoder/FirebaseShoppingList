@@ -18,6 +18,7 @@ import android.widget.Toast;
 import com.firebase.client.AuthData;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
+import com.fourthwardmobile.android.firebaseshoppinglist.ui.MainActivity;
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
@@ -33,6 +34,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.io.IOException;
@@ -97,6 +100,13 @@ public class LoginActivity extends BaseActivity {
                 if(user != null) {
                     //User is signed in
                     Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getUid());
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    //Clear back stack so clicking the back button does not bring user back
+                    //to the login screen
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    //Close login screen
+                    finish();
                 } else {
                     // User is signed out
                     Log.e(LOG_TAG,"onAuthStateChanged() Singed out user ");
@@ -182,17 +192,37 @@ public class LoginActivity extends BaseActivity {
         String email = mEditTextEmailInput.getText().toString();
         String password = mEditTextPasswordInput.getText().toString();
 
+        if(email.equals("")) {
+            mEditTextEmailInput.setError(getString(R.string.error_cannot_be_empty));
+            return;
+        }
+
+        if(password.equals("")) {
+            mEditTextPasswordInput.setError(getString(R.string.error_cannot_be_empty));
+            return;
+        }
+
+        mAuthProgressDialog.show();
+
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         Log.e(LOG_TAG,"signInWithEmail:onComplete(): " + task.isSuccessful());
 
+                        mAuthProgressDialog.dismiss();
                         //If sign in fails, display a message to the user. If sign in succeeds
                         //the auth sate listener will be notified and handled
                         if(!task.isSuccessful()) {
-                            Log.e(LOG_TAG,"signInWithEmail:failed, " + task.getException());
-                            showErrorToast("Login failed");
+                            Log.e(LOG_TAG, "signInWithEmail:failed with exception = " + task.getException().toString());
+                            if((task.getException() instanceof FirebaseAuthInvalidCredentialsException) ||
+                                    (task.getException() instanceof FirebaseAuthInvalidUserException)) {
+                                //Problem with the email or password
+                                mEditTextEmailInput.setError(task.getException().getMessage());
+                            } else {
+
+                                showErrorToast(task.getException().getMessage());
+                            }
                         }
                     }
                 });

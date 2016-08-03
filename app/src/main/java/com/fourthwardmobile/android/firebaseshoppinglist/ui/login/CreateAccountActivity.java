@@ -25,6 +25,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.util.Map;
@@ -54,22 +55,22 @@ public class CreateAccountActivity extends BaseActivity {
         initializeScreen();
 
         //Respond to changes in the user's sign-in state
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-
-                if(user != null) {
-                    //User is signed in
-                    Log.e(TAG, "onAuthStateChanged() Signed in user " + user.getUid());
-                } else {
-                    // User is signed out
-                    Log.e(TAG,"onAuthStateChanged() Singed out user ");
-                }
-            }
-        };
+//        mAuthListener = new FirebaseAuth.AuthStateListener() {
+//
+//            @Override
+//            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+//
+//                FirebaseUser user = firebaseAuth.getCurrentUser();
+//
+//                if(user != null) {
+//                    //User is signed in
+//                    Log.e(TAG, "onAuthStateChanged() Signed in user " + user.getUid());
+//                } else {
+//                    // User is signed out
+//                    Log.e(TAG,"onAuthStateChanged() Singed out user ");
+//                }
+//            }
+//        };
 
     }
 
@@ -140,10 +141,13 @@ public class CreateAccountActivity extends BaseActivity {
 
                             if(!task.isSuccessful()) {
 
-                                showErrorToast("Create Account failed");
-//                                AuthResult result = task.getResult();
-//
-//                                Log.e(TAG,"Failure result = " + result.toString());
+                                Log.e(TAG,"Create failed with exception = " + task.getException().toString());
+
+                                if(task.getException() instanceof FirebaseAuthUserCollisionException) {
+                                    mEditTextEmailCreate.setError(task.getException().getMessage());
+                                } else {
+                                showErrorToast(task.getException().getMessage());
+                               }
                             }
 
                             mAuthProgressDialog.dismiss();
