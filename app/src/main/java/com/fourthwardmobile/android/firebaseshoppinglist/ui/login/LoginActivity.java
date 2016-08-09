@@ -204,6 +204,7 @@ public class LoginActivity extends BaseActivity {
 
         mAuthProgressDialog.show();
 
+        //Callback for Email/Password login
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
@@ -226,6 +227,8 @@ public class LoginActivity extends BaseActivity {
                         }
                     }
                 });
+
+
     }
 
     /**
@@ -258,7 +261,20 @@ public class LoginActivity extends BaseActivity {
      * @param token A Google OAuth access token returned from Google
      */
     private void loginWithGoogle(String token) {
+
+       Log.e(LOG_TAG,"Login with Google sucessful! ");
+        Log.e(LOG_TAG,"Got token = " + token.toString());
+
+
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        //Clear back stack so clicking the back button does not bring user back
+        //to the login screen
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        //Close login screen
+        finish();
     }
+
 
     /**
      * GOOGLE SIGN IN CODE
