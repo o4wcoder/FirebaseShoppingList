@@ -16,9 +16,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
+import com.firebase.client.ServerValue;
+import com.firebase.client.ValueEventListener;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -28,6 +32,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -38,6 +43,7 @@ public class CreateAccountActivity extends BaseActivity {
     private static final String TAG = CreateAccountActivity.class.getSimpleName();
     private ProgressDialog mAuthProgressDialog;
     private EditText mEditTextUsernameCreate, mEditTextEmailCreate, mEditTextPasswordCreate;
+    private String mUserName,mUserEmail,mPassword;
 
     //Firebase Authentication
     private FirebaseAuth mAuth;
@@ -53,24 +59,6 @@ public class CreateAccountActivity extends BaseActivity {
          * Link layout elements from XML and setup the progress dialog
          */
         initializeScreen();
-
-        //Respond to changes in the user's sign-in state
-//        mAuthListener = new FirebaseAuth.AuthStateListener() {
-//
-//            @Override
-//            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-//
-//                FirebaseUser user = firebaseAuth.getCurrentUser();
-//
-//                if(user != null) {
-//                    //User is signed in
-//                    Log.e(TAG, "onAuthStateChanged() Signed in user " + user.getUid());
-//                } else {
-//                    // User is signed out
-//                    Log.e(TAG,"onAuthStateChanged() Singed out user ");
-//                }
-//            }
-//        };
 
     }
 
@@ -119,21 +107,21 @@ public class CreateAccountActivity extends BaseActivity {
 
         Firebase ref = new Firebase(Constants.FIREBASE_URL);
 
-        String loginUser = mEditTextUsernameCreate.getText().toString();
-        String loginEmail = mEditTextEmailCreate.getText().toString();
-        String loginPass = mEditTextPasswordCreate.getText().toString();
+        mUserName = mEditTextUsernameCreate.getText().toString();
+        mUserEmail = mEditTextEmailCreate.getText().toString();
+        mPassword = mEditTextPasswordCreate.getText().toString();
 
         //Check if input is valid
-        boolean validUser = isUserNameValid(loginUser);
-        boolean validEmail = isEmailValid(loginEmail);
-        boolean validPass = isPasswordValid(loginPass);
+        boolean validUser = isUserNameValid(mUserName);
+        boolean validEmail = isEmailValid(mUserEmail);
+        boolean validPass = isPasswordValid(mPassword);
 
         if(validUser && validEmail && validPass) {
 
             //If everything was vallid show progress dialog
             mAuthProgressDialog.show();
 
-            mAuth.createUserWithEmailAndPassword(loginEmail,loginPass)
+            mAuth.createUserWithEmailAndPassword(mUserEmail,mPassword)
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
@@ -148,7 +136,11 @@ public class CreateAccountActivity extends BaseActivity {
                                 } else {
                                 showErrorToast(task.getException().getMessage());
                                }
+                            } else {
+                                Log.e(TAG,"Success creating firebase user. Add to the database");
+                                createUserInFirebaseHelper(task.getResult().getUser().getUid());
                             }
+
 
                             mAuthProgressDialog.dismiss();
                         }
@@ -163,7 +155,36 @@ public class CreateAccountActivity extends BaseActivity {
     /**
      * Creates a new user in Firebase from the Java POJO
      */
-    private void createUserInFirebaseHelper(final String encodedEmail) {
+    private void createUserInFirebaseHelper(String uid) {
+
+        final Firebase userLocation = new Firebase(Constants.FIREBASE_URL_USERS).child(uid);
+
+        /**
+         * See if there is already a user (for example, if they already logged in with an associated
+         * Google account
+         */
+        userLocation.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+
+                //If there is no user, create one
+                if(dataSnapshot.getValue() == null) {
+
+                    //Set raw version of data to the ServerValue.TIMESTAMP and save into dateCreatedMap
+                    HashMap<String, Object> timestampJoined = new HashMap<>();
+                    timestampJoined.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
+
+                    User newUser = new User(mUserName,mUserEmail,timestampJoined);
+                    userLocation.setValue(newUser);
+                }
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+
+                Log.e(TAG,getString(R.string.log_error_occurred) + firebaseError.getMessage());
+            }
+        });
     }
 
     private boolean isEmailValid(String email) {

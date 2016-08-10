@@ -1,5 +1,6 @@
 package com.fourthwardmobile.android.firebaseshoppinglist.ui;
 
+import android.app.ProgressDialog;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +22,8 @@ import com.fourthwardmobile.android.firebaseshoppinglist.R;
 public abstract class BaseActivity extends AppCompatActivity implements
         GoogleApiClient.OnConnectionFailedListener {
 
+    /* A dialog that is presented until the Firebase authentication finished. */
+    private ProgressDialog mAuthProgressDialog;
     protected GoogleApiClient mGoogleApiClient;
 
     @Override
@@ -29,6 +32,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
 
         /* Setup the Google API object to allow Google logins */
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.client_id)) //CHRIS ADD
                 .requestEmail()
                 .build();
 
@@ -40,6 +44,12 @@ public abstract class BaseActivity extends AppCompatActivity implements
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
+
+        /* Setup the progress dialog that is displayed later when authenticating with Firebase */
+        mAuthProgressDialog = new ProgressDialog(this);
+        mAuthProgressDialog.setTitle(getString(R.string.progress_dialog_loading));
+        mAuthProgressDialog.setMessage(getString(R.string.progress_dialog_authenticating_with_firebase));
+        mAuthProgressDialog.setCancelable(false);
     }
 
     @Override
@@ -84,5 +94,21 @@ public abstract class BaseActivity extends AppCompatActivity implements
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
+    }
+
+    public void showProgressDialog() {
+//        if (mAuthProgressDialog == null) {
+//            mAuthProgressDialog = new ProgressDialog(this);
+//            mAuthProgressDialog.setMessage(getString(R.string.loading));
+//            mAuthProgressDialog.setIndeterminate(true);
+//        }
+
+        mAuthProgressDialog.show();
+    }
+
+    public void hideProgressDialog() {
+        if (mAuthProgressDialog != null && mAuthProgressDialog.isShowing()) {
+            mAuthProgressDialog.dismiss();
+        }
     }
 }

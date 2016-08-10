@@ -24,19 +24,23 @@ import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.io.IOException;
 
@@ -47,11 +51,12 @@ public class LoginActivity extends BaseActivity {
 
     private static final String LOG_TAG = LoginActivity.class.getSimpleName();
     /* A dialog that is presented until the Firebase authentication finished. */
-    private ProgressDialog mAuthProgressDialog;
+    //private ProgressDialog mAuthProgressDialog;
     private EditText mEditTextEmailInput, mEditTextPasswordInput;
 
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
+    //private GoogleApiClient mGoogleApiClient;
 
     /**
      * Variables related to Google Login
@@ -115,6 +120,9 @@ public class LoginActivity extends BaseActivity {
         };
 
 
+
+
+
     }
 
     @Override
@@ -176,10 +184,10 @@ public class LoginActivity extends BaseActivity {
         LinearLayout linearLayoutLoginActivity = (LinearLayout) findViewById(R.id.linear_layout_login_activity);
         initializeBackground(linearLayoutLoginActivity);
         /* Setup the progress dialog that is displayed later when authenticating with Firebase */
-        mAuthProgressDialog = new ProgressDialog(this);
-        mAuthProgressDialog.setTitle(getString(R.string.progress_dialog_loading));
-        mAuthProgressDialog.setMessage(getString(R.string.progress_dialog_authenticating_with_firebase));
-        mAuthProgressDialog.setCancelable(false);
+//        mAuthProgressDialog = new ProgressDialog(this);
+//        mAuthProgressDialog.setTitle(getString(R.string.progress_dialog_loading));
+//        mAuthProgressDialog.setMessage(getString(R.string.progress_dialog_authenticating_with_firebase));
+//        mAuthProgressDialog.setCancelable(false);
         /* Setup Google Sign In */
         setupGoogleSignIn();
     }
@@ -202,8 +210,8 @@ public class LoginActivity extends BaseActivity {
             return;
         }
 
-        mAuthProgressDialog.show();
-
+       // mAuthProgressDialog.show();
+         showProgressDialog();
         //Callback for Email/Password login
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -211,7 +219,8 @@ public class LoginActivity extends BaseActivity {
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         Log.e(LOG_TAG,"signInWithEmail:onComplete(): " + task.isSuccessful());
 
-                        mAuthProgressDialog.dismiss();
+                        //mAuthProgressDialog.dismiss();
+                        hideProgressDialog();
                         //If sign in fails, display a message to the user. If sign in succeeds
                         //the auth sate listener will be notified and handled
                         if(!task.isSuccessful()) {
@@ -315,8 +324,9 @@ public class LoginActivity extends BaseActivity {
     public void onSignInGooglePressed(View view) {
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
         startActivityForResult(signInIntent, RC_GOOGLE_LOGIN);
-        mAuthProgressDialog.show();
-
+        Log.e(LOG_TAG,"Show progress dialog");
+       // mAuthProgressDialog.show();
+        showProgressDialog();
     }
 
     @Override
@@ -325,7 +335,8 @@ public class LoginActivity extends BaseActivity {
          * An unresolvable error has occurred and Google APIs (including Sign-In) will not
          * be available.
          */
-        mAuthProgressDialog.dismiss();
+       // mAuthProgressDialog.dismiss();
+        hideProgressDialog();
         showErrorToast(result.toString());
     }
 
@@ -350,8 +361,9 @@ public class LoginActivity extends BaseActivity {
         if (result.isSuccess()) {
             /* Signed in successfully, get the OAuth token */
             mGoogleAccount = result.getSignInAccount();
-            getGoogleOAuthTokenAndLogin();
-
+            //getGoogleOAuthTokenAndLogin();
+            Log.e(LOG_TAG,"Signed in user = " + mGoogleAccount.getDisplayName());
+            firebaseAuthWithGoogle();
 
         } else {
             if (result.getStatus().getStatusCode() == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
@@ -359,60 +371,83 @@ public class LoginActivity extends BaseActivity {
             } else {
                 showErrorToast("Error handling the sign in: " + result.getStatus().getStatusMessage());
             }
-            mAuthProgressDialog.dismiss();
+           // mAuthProgressDialog.dismiss();
+            hideProgressDialog();
         }
     }
 
+    private void firebaseAuthWithGoogle() {
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(mGoogleAccount.getIdToken(),null);
+
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                    Log.e(LOG_TAG,"signInWithCredential:onComplete: " + task.isSuccessful());
+
+                        if(!task.isSuccessful()) {
+                            showErrorToast(task.getException().getMessage());
+                        }
+
+                       // mAuthProgressDialog.dismiss();
+                        hideProgressDialog();
+                    }
+
+                });
+
+
+    }
     /**
      * Gets the GoogleAuthToken and logs in.
      */
-    private void getGoogleOAuthTokenAndLogin() {
-        /* Get OAuth token in Background */
-        AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
-            String mErrorMessage = null;
-
-            @Override
-            protected String doInBackground(Void... params) {
-                String token = null;
-
-                try {
-                    String scope = String.format(getString(R.string.oauth2_format), new Scope(Scopes.PROFILE)) + " email";
-
-                    token = GoogleAuthUtil.getToken(LoginActivity.this, mGoogleAccount.getEmail(), scope);
-                } catch (IOException transientEx) {
-                    /* Network or server error */
-                    Log.e(LOG_TAG, getString(R.string.google_error_auth_with_google) + transientEx);
-                    mErrorMessage = getString(R.string.google_error_network_error) + transientEx.getMessage();
-                } catch (UserRecoverableAuthException e) {
-                    Log.w(LOG_TAG, getString(R.string.google_error_recoverable_oauth_error) + e.toString());
-
-                    /* We probably need to ask for permissions, so start the intent if there is none pending */
-                    if (!mGoogleIntentInProgress) {
-                        mGoogleIntentInProgress = true;
-                        Intent recover = e.getIntent();
-                        startActivityForResult(recover, RC_GOOGLE_LOGIN);
-                    }
-                } catch (GoogleAuthException authEx) {
-                    /* The call is not ever expected to succeed assuming you have already verified that
-                     * Google Play services is installed. */
-                    Log.e(LOG_TAG, " " + authEx.getMessage(), authEx);
-                    mErrorMessage = getString(R.string.google_error_auth_with_google) + authEx.getMessage();
-                }
-                return token;
-            }
-
-            @Override
-            protected void onPostExecute(String token) {
-                mAuthProgressDialog.dismiss();
-                if (token != null) {
-                    /* Successfully got OAuth token, now login with Google */
-                    loginWithGoogle(token);
-                } else if (mErrorMessage != null) {
-                    showErrorToast(mErrorMessage);
-                }
-            }
-        };
-
-        task.execute();
-    }
+//    private void getGoogleOAuthTokenAndLogin() {
+//        /* Get OAuth token in Background */
+//        AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
+//            String mErrorMessage = null;
+//
+//            @Override
+//            protected String doInBackground(Void... params) {
+//                String token = null;
+//
+//                try {
+//                    String scope = String.format(getString(R.string.oauth2_format), new Scope(Scopes.PROFILE)) + " email";
+//
+//                    token = GoogleAuthUtil.getToken(LoginActivity.this, mGoogleAccount.getEmail(), scope);
+//                } catch (IOException transientEx) {
+//                    /* Network or server error */
+//                    Log.e(LOG_TAG, getString(R.string.google_error_auth_with_google) + transientEx);
+//                    mErrorMessage = getString(R.string.google_error_network_error) + transientEx.getMessage();
+//                } catch (UserRecoverableAuthException e) {
+//                    Log.w(LOG_TAG, getString(R.string.google_error_recoverable_oauth_error) + e.toString());
+//
+//                    /* We probably need to ask for permissions, so start the intent if there is none pending */
+//                    if (!mGoogleIntentInProgress) {
+//                        mGoogleIntentInProgress = true;
+//                        Intent recover = e.getIntent();
+//                        startActivityForResult(recover, RC_GOOGLE_LOGIN);
+//                    }
+//                } catch (GoogleAuthException authEx) {
+//                    /* The call is not ever expected to succeed assuming you have already verified that
+//                     * Google Play services is installed. */
+//                    Log.e(LOG_TAG, " " + authEx.getMessage(), authEx);
+//                    mErrorMessage = getString(R.string.google_error_auth_with_google) + authEx.getMessage();
+//                }
+//                return token;
+//            }
+//
+//            @Override
+//            protected void onPostExecute(String token) {
+//                mAuthProgressDialog.dismiss();
+//                if (token != null) {
+//                    /* Successfully got OAuth token, now login with Google */
+//                    loginWithGoogle(token);
+//                } else if (mErrorMessage != null) {
+//                    showErrorToast(mErrorMessage);
+//                }
+//            }
+//        };
+//
+//        task.execute();
+//    }
 }
