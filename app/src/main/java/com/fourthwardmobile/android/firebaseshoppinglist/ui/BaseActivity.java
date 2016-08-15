@@ -25,6 +25,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
     /* A dialog that is presented until the Firebase authentication finished. */
     private ProgressDialog mAuthProgressDialog;
     protected GoogleApiClient mGoogleApiClient;
+    protected String mEncodedEmail;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

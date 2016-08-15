@@ -16,9 +16,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.client.AuthData;
+import com.firebase.client.DataSnapshot;
+import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
+import com.firebase.client.ServerValue;
+import com.firebase.client.ValueEventListener;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.MainActivity;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
@@ -43,6 +51,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * Created by Chris Hare on 8/1/2016.
@@ -104,7 +113,7 @@ public class LoginActivity extends BaseActivity {
 
                 if(user != null) {
                     //User is signed in
-                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getUid());
+                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getEmail());
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     //Clear back stack so clicking the back button does not bring user back
                     //to the login screen
@@ -197,6 +206,7 @@ public class LoginActivity extends BaseActivity {
      */
     public void signInPassword() {
 
+        Log.e(LOG_TAG,"signInPassword()");
         String email = mEditTextEmailInput.getText().toString();
         String password = mEditTextPasswordInput.getText().toString();
 
@@ -233,6 +243,9 @@ public class LoginActivity extends BaseActivity {
 
                                 showErrorToast(task.getException().getMessage());
                             }
+                        } else {
+
+
                         }
                     }
                 });
@@ -357,7 +370,7 @@ public class LoginActivity extends BaseActivity {
     }
 
     private void handleSignInResult(GoogleSignInResult result) {
-        Log.d(LOG_TAG, "handleSignInResult:" + result.isSuccess());
+        Log.e(LOG_TAG, "handleSignInResult:" + result.isSuccess());
         if (result.isSuccess()) {
             /* Signed in successfully, get the OAuth token */
             mGoogleAccount = result.getSignInAccount();
@@ -388,6 +401,39 @@ public class LoginActivity extends BaseActivity {
 
                         if(!task.isSuccessful()) {
                             showErrorToast(task.getException().getMessage());
+                        } else {
+
+                            FirebaseUser user = task.getResult().getUser();
+                            Log.e(LOG_TAG,"signInWithCredential:onComplete Google Sign-in with user = " + user.getEmail());
+
+                            //Get lowercase email and replace "." with "," to be able to use ask Firebase Key
+                            mEncodedEmail = Utils.encodeEmail(user.getEmail().toLowerCase());
+                            //Get user name
+                            final String userName = user.getDisplayName();
+
+                            //Create user in Firebase if it does not exist
+                            final Firebase userLocation = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);
+                            userLocation.addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+
+                                    //If there is not user, create one
+                                    if(dataSnapshot.getValue() == null) {
+                                        Log.e(LOG_TAG,"signInWithCredential:onDataChange Create new user " + mEncodedEmail);
+                                        //Set raw version of data to the ServerValue.TIMESTAMP and save into dateCreatedMap
+                                        HashMap<String, Object> timestampJoined = new HashMap<>();
+                                        timestampJoined.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
+
+                                        User newUser = new User(userName,mEncodedEmail,timestampJoined);
+                                        userLocation.setValue(newUser);
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(FirebaseError firebaseError) {
+                                    Log.e(LOG_TAG, getString(R.string.log_error_occurred) + firebaseError.getMessage());
+                                }
+                            });
                         }
 
                        // mAuthProgressDialog.dismiss();

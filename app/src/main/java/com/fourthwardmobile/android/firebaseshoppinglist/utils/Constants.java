@@ -39,8 +39,16 @@ public final class Constants {
     public static final String KEY_LIST_NAME = "LIST_NAME";
     public static final String KEY_LAYOUT_RESOURCE = "LAYOUT_RESOURCE";
     public static final String KEY_LIST_ITEM_NAME = "LIST_ITEM_NAME";
-
+    public static final String KEY_GOOGLE_EMAIL = "GOOGLE_EMAIL";
     public static final String KEY_LIST_ID = "LIST_ID";
     public static final String KEY_LIST_ITEM_ID = "ITEM_ID";
+
+    /**
+     * Constants for Firebase login
+     */
+    public static final String PASSWORD_PROVIDER = "password";
+    public static final String GOOGLE_PROVIDER = "google";
+    public static final String PROVIDER_DATA_DISPLAY_NAME = "displayName";
+
 
 }
