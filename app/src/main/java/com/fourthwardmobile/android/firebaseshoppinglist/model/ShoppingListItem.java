@@ -11,9 +11,9 @@ public class ShoppingListItem {
     public ShoppingListItem() {
     }
 
-    public ShoppingListItem(String itemName) {
+    public ShoppingListItem(String itemName, String owner) {
         this.itemName = itemName;
-        this.itemOwner = "Stink Face";
+        this.itemOwner = owner;
     }
 
     public String getItemName() {

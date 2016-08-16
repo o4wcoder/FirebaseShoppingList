@@ -1,22 +1,31 @@
 package com.fourthwardmobile.android.firebaseshoppinglist.ui;
 
 import android.app.DialogFragment;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.firebase.client.DataSnapshot;
+import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
+import com.firebase.client.ValueEventListener;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.activeLists.AddListDialogFragment;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.activeLists.ShoppingListsFragment;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.meals.AddMealDialogFragment;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.meals.MealsFragment;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 
 /**
  * Represents the home screen of the app which
@@ -25,15 +34,49 @@ import com.fourthwardmobile.android.firebaseshoppinglist.ui.meals.MealsFragment;
 public class MainActivity extends BaseActivity {
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
+    private Firebase mUserRef;
+    private ValueEventListener mUserRefListener;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         /**
+         * Create Firebase references
+         */
+        mUserRef = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);
+        /**
          * Link layout elements from XML and setup the toolbar
          */
+
         initializeScreen();
+
+        /**
+         * Add ValueEventListeners to references to control get data and control behavior and
+         * visibility of elements
+         */
+        mUserRefListener = mUserRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                User user = dataSnapshot.getValue(User.class);
+
+                //Set the activity title to current user name if user is  not null
+                if(user != null) {
+                    //Asumes that the first word in the user's name is the user's first name
+                    String firstName = user.getName().split("\\s+")[0];
+                    String title = getString(R.string.user_list_title,firstName);
+                    setTitle(title);
+                }
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+
+                Log.e(LOG_TAG,getString(R.string.log_error_the_read_failed) +
+                     firebaseError.getMessage());
+            }
+        });
     }
 
 
@@ -64,6 +107,8 @@ public class MainActivity extends BaseActivity {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        mUserRef.removeEventListener(mUserRefListener);
     }
 
     /**
@@ -91,7 +136,7 @@ public class MainActivity extends BaseActivity {
      */
     public void showAddListDialog(View view) {
         /* Create an instance of the dialog fragment and show it */
-        DialogFragment dialog = AddListDialogFragment.newInstance();
+        DialogFragment dialog = AddListDialogFragment.newInstance(mEncodedEmail);
         dialog.show(MainActivity.this.getFragmentManager(), "AddListDialogFragment");
     }
 

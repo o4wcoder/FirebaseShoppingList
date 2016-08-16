@@ -3,8 +3,11 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.activeLists;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.ShareActionProvider;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,14 +29,16 @@ import java.util.HashMap;
  */
 public class AddListDialogFragment extends DialogFragment {
     EditText mEditTextListName;
+    String mEncodedEmail;
 
     /**
      * Public static constructor that creates fragment and
      * passes a bundle with data into it when adapter is created
      */
-    public static AddListDialogFragment newInstance() {
+    public static AddListDialogFragment newInstance(String encodedEmail) {
         AddListDialogFragment addListDialogFragment = new AddListDialogFragment();
         Bundle bundle = new Bundle();
+        bundle.putString(Constants.KEY_ENCODED_EMAIL, encodedEmail);
         addListDialogFragment.setArguments(bundle);
         return addListDialogFragment;
     }
@@ -44,6 +49,8 @@ public class AddListDialogFragment extends DialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mEncodedEmail = getArguments().getString(Constants.KEY_ENCODED_EMAIL);
     }
 
     /**
@@ -99,7 +106,6 @@ public class AddListDialogFragment extends DialogFragment {
 
         //Get the string the user entered into the EditText
         String userEnteredName = mEditTextListName.getText().toString();
-        String owner = "Anonymous Owner";
 
         if(!userEnteredName.equals("")) {
 
@@ -112,13 +118,13 @@ public class AddListDialogFragment extends DialogFragment {
             //Save listsRef.push to maintain same random Id
             final String listId = newListRef.getKey();
 
-            //Set raw version of date to the SErverValue.TIMESTAMP value and
+            //Set raw version of date to the ServerValue.TIMESTAMP value and
             //save into timestampCreatedMap
             HashMap<String, Object> timestampCreated = new HashMap<>();
             timestampCreated.put(Constants.FIREBASE_PROPERTY_TIMESTAMP,ServerValue.TIMESTAMP);
 
             //Build the shopping list
-            ShoppingList newShoppingList = new ShoppingList(userEnteredName,owner,
+            ShoppingList newShoppingList = new ShoppingList(userEnteredName,mEncodedEmail,
                     timestampCreated);
 
             //Add shopping list

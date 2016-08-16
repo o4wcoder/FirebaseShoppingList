@@ -237,7 +237,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
      */
     public void showAddListItemDialog(View view) {
         /* Create an instance of the dialog fragment and show it */
-        DialogFragment dialog = AddListItemDialogFragment.newInstance(mShoppingList,mListId);
+        DialogFragment dialog = AddListItemDialogFragment.newInstance(mShoppingList,mListId, mEncodedEmail);
         dialog.show(getFragmentManager(), "AddListItemDialogFragment");
     }
 
@@ -247,7 +247,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
     public void showEditListNameDialog() {
         Log.e(TAG,"showEditListNameDialog()");
         /* Create an instance of the dialog fragment and show it */
-        DialogFragment dialog = EditListNameDialogFragment.newInstance(mShoppingList,mListId);
+        DialogFragment dialog = EditListNameDialogFragment.newInstance(mShoppingList,mListId,mEncodedEmail);
         dialog.show(this.getFragmentManager(), "EditListNameDialogFragment");
     }
 
@@ -258,7 +258,8 @@ public class ActiveListDetailsActivity extends BaseActivity {
         /* Create an instance of the dialog fragment and show it */
         ShoppingListItem shoppingListItem = mActiveListItemAdapter.getItem(position);
         String itemId = mActiveListItemAdapter.getRef(position).getKey();
-        DialogFragment dialog = EditListItemNameDialogFragment.newInstance(mShoppingList,mListId,shoppingListItem, itemId);
+        DialogFragment dialog = EditListItemNameDialogFragment.newInstance(mShoppingList,mListId,
+                shoppingListItem, itemId,mEncodedEmail);
         dialog.show(this.getFragmentManager(), "EditListItemNameDialogFragment");
     }
 

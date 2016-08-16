@@ -42,6 +42,9 @@ public final class Constants {
     public static final String KEY_GOOGLE_EMAIL = "GOOGLE_EMAIL";
     public static final String KEY_LIST_ID = "LIST_ID";
     public static final String KEY_LIST_ITEM_ID = "ITEM_ID";
+    public static final String KEY_LIST_OWNER = "LIST_OWNER";
+    public static final String KEY_ENCODED_EMAIL = "USER_EMAIL";
+    public static final String KEY_PROVIDER = "PROVIDER";
 
     /**
      * Constants for Firebase login

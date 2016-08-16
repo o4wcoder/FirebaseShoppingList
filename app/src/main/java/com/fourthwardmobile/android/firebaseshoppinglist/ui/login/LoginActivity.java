@@ -2,8 +2,10 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.login;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -403,13 +405,37 @@ public class LoginActivity extends BaseActivity {
                             showErrorToast(task.getException().getMessage());
                         } else {
 
+                            String unprocessedEmail;
                             FirebaseUser user = task.getResult().getUser();
                             Log.e(LOG_TAG,"signInWithCredential:onComplete Google Sign-in with user = " + user.getEmail());
 
+                           // Log.e(LOG_TAG,"Got provider = " + task.getResult().getUser().getProviders().get(0));
                             //Get lowercase email and replace "." with "," to be able to use ask Firebase Key
-                            mEncodedEmail = Utils.encodeEmail(user.getEmail().toLowerCase());
+
+                            //Save Google email in shared preferences
+                            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                            SharedPreferences.Editor spe = sp.edit();
+
+                            if (mGoogleApiClient.isConnected()) {
+                                unprocessedEmail = user.getEmail().toLowerCase();
+                                spe.putString(Constants.KEY_GOOGLE_EMAIL, unprocessedEmail).apply();
+                            } else {
+                                /**
+                                 * Otherwise get email from sharedPreferences, uas null as default value
+                                 * This mean the user has resumed his session
+                                 */
+                                unprocessedEmail = sp.getString(Constants.KEY_GOOGLE_EMAIL, null);
+
+                            }
+                            mEncodedEmail = Utils.encodeEmail(unprocessedEmail);
                             //Get user name
                             final String userName = user.getDisplayName();
+
+                            Log.e(LOG_TAG,"Storing to shared pref, email = " + mEncodedEmail);
+                            spe.putString(Constants.KEY_ENCODED_EMAIL,mEncodedEmail).apply();
+
+                            //Store Google Provider
+                            spe.putString(Constants.KEY_PROVIDER,Constants.GOOGLE_PROVIDER).apply();
 
                             //Create user in Firebase if it does not exist
                             final Firebase userLocation = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);

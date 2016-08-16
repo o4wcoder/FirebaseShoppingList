@@ -38,10 +38,11 @@ public class AddListItemDialogFragment extends EditListDialogFragment {
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
-    public static AddListItemDialogFragment newInstance(ShoppingList shoppingList, String listId) {
+    public static AddListItemDialogFragment newInstance(ShoppingList shoppingList, String listId,
+                                                        String encodedEmail) {
         AddListItemDialogFragment addListItemDialogFragment = new AddListItemDialogFragment();
 
-        Bundle bundle = newInstanceHelper(shoppingList, R.layout.dialog_add_item, listId);
+        Bundle bundle = newInstanceHelper(shoppingList, R.layout.dialog_add_item, listId,encodedEmail);
         bundle.putString(Constants.KEY_LIST_ID,listId);
         addListItemDialogFragment.setArguments(bundle);
 
@@ -90,7 +91,7 @@ public class AddListItemDialogFragment extends EditListDialogFragment {
             String itemId = newItemRef.getKey();
 
             //Make a POJO for the item and immediately turn int into a HashMap
-            ShoppingListItem itemToAddObject = new ShoppingListItem(itemName);
+            ShoppingListItem itemToAddObject = new ShoppingListItem(itemName,mEncodedEmail);
             HashMap<String, Object> itemToAdd = (HashMap<String, Object>) new ObjectMapper().convertValue(itemToAddObject,Map.class);
 
             //Add item to the update map

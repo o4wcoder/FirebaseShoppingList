@@ -1,13 +1,17 @@
 package com.fourthwardmobile.android.firebaseshoppinglist.ui;
 
 import android.app.ProgressDialog;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
@@ -26,6 +30,7 @@ public abstract class BaseActivity extends AppCompatActivity implements
     private ProgressDialog mAuthProgressDialog;
     protected GoogleApiClient mGoogleApiClient;
     protected String mEncodedEmail;
+    protected String mProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +50,11 @@ public abstract class BaseActivity extends AppCompatActivity implements
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        mEncodedEmail = sp.getString(Constants.KEY_ENCODED_EMAIL,null);
+        mProvider = sp.getString(Constants.KEY_PROVIDER,null);
+
 
         /* Setup the progress dialog that is displayed later when authenticating with Firebase */
         mAuthProgressDialog = new ProgressDialog(this);
