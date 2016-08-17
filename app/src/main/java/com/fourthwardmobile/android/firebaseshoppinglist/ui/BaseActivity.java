@@ -1,22 +1,35 @@
 package com.fourthwardmobile.android.firebaseshoppinglist.ui;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 
+import com.firebase.client.AuthData;
+import com.firebase.client.Firebase;
+import com.fourthwardmobile.android.firebaseshoppinglist.ui.login.CreateAccountActivity;
+import com.fourthwardmobile.android.firebaseshoppinglist.ui.login.LoginActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 /**
  * BaseActivity class is used as a base class for all activities in the app
@@ -26,11 +39,16 @@ import com.fourthwardmobile.android.firebaseshoppinglist.R;
 public abstract class BaseActivity extends AppCompatActivity implements
         GoogleApiClient.OnConnectionFailedListener {
 
+    private static final String TAG = BaseActivity.class.getSimpleName();
+
     /* A dialog that is presented until the Firebase authentication finished. */
     private ProgressDialog mAuthProgressDialog;
     protected GoogleApiClient mGoogleApiClient;
     protected String mEncodedEmail;
     protected String mProvider;
+    protected FirebaseAuth.AuthStateListener mAuthListener;
+    protected Firebase mFirebaseRef;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,19 +60,48 @@ public abstract class BaseActivity extends AppCompatActivity implements
                 .requestEmail()
                 .build();
 
+
+
         /**
          * Build a GoogleApiClient with access to the Google Sign-In API and the
          * options specified by gso.
          */
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
-                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
-                .build();
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso).build();
 
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        mEncodedEmail = sp.getString(Constants.KEY_ENCODED_EMAIL,null);
-        mProvider = sp.getString(Constants.KEY_PROVIDER,null);
+        final SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        mEncodedEmail = sp.getString(Constants.KEY_ENCODED_EMAIL, null);
+        mProvider = sp.getString(Constants.KEY_PROVIDER, null);
 
+        if (!((this instanceof LoginActivity) || (this instanceof CreateAccountActivity))) {
+
+            //Get Firebase instance to Authentication login
+            mAuth = FirebaseAuth.getInstance();
+           // mFirebaseRef = new Firebase(Constants.FIREBASE_URL);
+
+            mAuthListener = new FirebaseAuth.AuthStateListener() {
+
+            @Override
+            public void onAuthStateChanged(FirebaseAuth firebaseAuth) {
+                Log.e(TAG,"onAuthStateChanged()");
+
+
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                //The user has been logged out
+                    if (user == null) {
+                        //Clear out shared preferences
+                        SharedPreferences.Editor spe = sp.edit();
+                        spe.putString(Constants.KEY_ENCODED_EMAIL, null);
+                        spe.putString(Constants.KEY_PROVIDER, null);
+
+                        Log.e(TAG,"onAuthStateChanged(): User has signed out");
+                        takeUserToLoginScreenOnUnAuth();
+                    }
+                }
+            };
+            mAuth.addAuthStateListener(mAuthListener);
+        }
 
         /* Setup the progress dialog that is displayed later when authenticating with Firebase */
         mAuthProgressDialog = new ProgressDialog(this);
@@ -66,6 +113,11 @@ public abstract class BaseActivity extends AppCompatActivity implements
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        //Cleanup listeners
+        if(!((this instanceof LoginActivity) || (this instanceof CreateAccountActivity))) {
+            mAuth.removeAuthStateListener(mAuthListener);
+        }
     }
 
     @Override
@@ -86,6 +138,9 @@ public abstract class BaseActivity extends AppCompatActivity implements
 
         if (id == android.R.id.home) {
             super.onBackPressed();
+            return true;
+        } else if(id == R.id.action_logout) {
+            logout();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -121,5 +176,55 @@ public abstract class BaseActivity extends AppCompatActivity implements
         if (mAuthProgressDialog != null && mAuthProgressDialog.isShowing()) {
             mAuthProgressDialog.dismiss();
         }
+    }
+
+    /**
+     * Logs out the user from their current session and starts LoginActivity
+     * Also disconnects the mGoogleApiClient if connect and provider is Google;
+     */
+    protected void logout() {
+
+        Log.e(TAG,"logout()");
+        //Logout if mProvider is not null
+        if(mProvider != null) {
+          //  mAuth.unauth();
+            mAuth.signOut();
+            Log.e(TAG,"logout(): Provider is not null");
+            if(mProvider.equals(Constants.GOOGLE_PROVIDER)) {
+                //Logout from Google+
+                Log.e(TAG,"logout(): Sign out from Google");
+                Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(new ResultCallback<Status>() {
+                    @Override
+                    public void onResult(@NonNull Status status) {
+                      Log.e(TAG,"logout()onResult. Sign out from Google success");
+                    }
+                });
+            }
+        }
+    }
+
+    private void takeUserToLoginScreenOnUnAuth() {
+
+        Log.e(TAG,"Send user back to Login Activity");
+        //Move user to LoginActivity and remove the backstack
+        Intent intent = new Intent(BaseActivity.this,LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+
+        mGoogleApiClient.disconnect();
     }
 }

@@ -66,7 +66,7 @@ public class LoginActivity extends BaseActivity {
     private EditText mEditTextEmailInput, mEditTextPasswordInput;
 
     private FirebaseAuth mAuth;
-    private FirebaseAuth.AuthStateListener mAuthListener;
+   // private FirebaseAuth.AuthStateListener mAuthListener;
     //private GoogleApiClient mGoogleApiClient;
 
     /**
@@ -106,29 +106,29 @@ public class LoginActivity extends BaseActivity {
         });
 
         //Respond to changes in the user's sign-in state
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-
-                if(user != null) {
-                    //User is signed in
-                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getEmail());
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    //Clear back stack so clicking the back button does not bring user back
-                    //to the login screen
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    //Close login screen
-                    finish();
-                } else {
-                    // User is signed out
-                    Log.e(LOG_TAG,"onAuthStateChanged() Singed out user ");
-                }
-            }
-        };
+//        mAuthListener = new FirebaseAuth.AuthStateListener() {
+//
+//            @Override
+//            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+//
+//                FirebaseUser user = firebaseAuth.getCurrentUser();
+//
+//                if(user != null) {
+//                    //User is signed in
+//                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getEmail());
+//                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+//                    //Clear back stack so clicking the back button does not bring user back
+//                    //to the login screen
+//                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+//                    startActivity(intent);
+//                    //Close login screen
+//                    finish();
+//                } else {
+//                    // User is signed out
+//                    Log.e(LOG_TAG,"onAuthStateChanged() Singed out user ");
+//                }
+//            }
+//        };
 
 
 
@@ -136,19 +136,19 @@ public class LoginActivity extends BaseActivity {
 
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        mAuth.addAuthStateListener(mAuthListener);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        if (mAuthListener != null) {
-            mAuth.removeAuthStateListener(mAuthListener);
-        }
-    }
+//    @Override
+//    public void onStart() {
+//        super.onStart();
+//        mAuth.addAuthStateListener(mAuthListener);
+//    }
+//
+//    @Override
+//    public void onStop() {
+//        super.onStop();
+//        if (mAuthListener != null) {
+//            mAuth.removeAuthStateListener(mAuthListener);
+//        }
+//    }
 
     @Override
     protected void onResume() {
@@ -209,7 +209,7 @@ public class LoginActivity extends BaseActivity {
     public void signInPassword() {
 
         Log.e(LOG_TAG,"signInPassword()");
-        String email = mEditTextEmailInput.getText().toString();
+        final String email = mEditTextEmailInput.getText().toString();
         String password = mEditTextPasswordInput.getText().toString();
 
         if(email.equals("")) {
@@ -247,7 +247,16 @@ public class LoginActivity extends BaseActivity {
                             }
                         } else {
 
+                            mEncodedEmail = Utils.encodeEmail(email);
 
+                            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                            SharedPreferences.Editor spe = sp.edit();
+
+                            spe.putString(Constants.KEY_ENCODED_EMAIL,mEncodedEmail).apply();
+                            spe.putString(Constants.KEY_PROVIDER,Constants.PASSWORD_PROVIDER).apply();
+
+                            //Got to main activity when done loging in
+                            goToMainActivity();
                         }
                     }
                 });
@@ -255,22 +264,22 @@ public class LoginActivity extends BaseActivity {
 
     }
 
-    /**
-     * Helper method that makes sure a user is created if the user
-     * logs in with Firebase's email/password provider.
-     * @param authData AuthData object returned from onAuthenticated
-     */
-    private void setAuthenticatedUserPasswordProvider(AuthData authData) {
-    }
-
-    /**
-     * Helper method that makes sure a user is created if the user
-     * logs in with Firebase's Google login provider.
-     * @param authData AuthData object returned from onAuthenticated
-     */
-    private void setAuthenticatedUserGoogle(AuthData authData){
-
-    }
+//    /**
+//     * Helper method that makes sure a user is created if the user
+//     * logs in with Firebase's email/password provider.
+//     * @param authData AuthData object returned from onAuthenticated
+//     */
+//    private void setAuthenticatedUserPasswordProvider(AuthData authData) {
+//    }
+//
+//    /**
+//     * Helper method that makes sure a user is created if the user
+//     * logs in with Firebase's Google login provider.
+//     * @param authData AuthData object returned from onAuthenticated
+//     */
+//    private void setAuthenticatedUserGoogle(AuthData authData){
+//
+//    }
 
     /**
      * Show error toast to users
@@ -284,20 +293,20 @@ public class LoginActivity extends BaseActivity {
      * Signs you into ShoppingList++ using the Google Login Provider
      * @param token A Google OAuth access token returned from Google
      */
-    private void loginWithGoogle(String token) {
-
-       Log.e(LOG_TAG,"Login with Google sucessful! ");
-        Log.e(LOG_TAG,"Got token = " + token.toString());
-
-
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        //Clear back stack so clicking the back button does not bring user back
-        //to the login screen
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        //Close login screen
-        finish();
-    }
+//    private void loginWithGoogle(String token) {
+//
+//       Log.e(LOG_TAG,"Login with Google sucessful! ");
+//        Log.e(LOG_TAG,"Got token = " + token.toString());
+//
+//
+//        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+//        //Clear back stack so clicking the back button does not bring user back
+//        //to the login screen
+//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+//        startActivity(intent);
+//        //Close login screen
+//        finish();
+//    }
 
 
     /**
@@ -464,11 +473,23 @@ public class LoginActivity extends BaseActivity {
 
                        // mAuthProgressDialog.dismiss();
                         hideProgressDialog();
+
+                        //Got to main activity when done loging in
+                        goToMainActivity();
+
                     }
 
                 });
 
 
+    }
+
+    private void goToMainActivity() {
+                                  /* Go to main activity */
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
     /**
      * Gets the GoogleAuthToken and logs in.

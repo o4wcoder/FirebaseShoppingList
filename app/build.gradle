@@ -50,4 +50,5 @@ dependencies {
     compile 'com.google.android.gms:play-services-auth:9.2.1'
 
     apply plugin: 'com.google.gms.google-services'
+    compile 'com.google.android.gms:play-services-appindexing:9.2.1'
 }

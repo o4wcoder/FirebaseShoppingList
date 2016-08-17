@@ -45,6 +45,7 @@ public class MainActivity extends BaseActivity {
         /**
          * Create Firebase references
          */
+        Log.e(LOG,"onCreate with encoded email")
         mUserRef = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);
         /**
          * Link layout elements from XML and setup the toolbar
@@ -99,7 +100,7 @@ public class MainActivity extends BaseActivity {
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
+      //  int id = item.getItemId();
         return super.onOptionsItemSelected(item);
     }
 
