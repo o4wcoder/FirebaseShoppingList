@@ -2,6 +2,8 @@ package com.fourthwardmobile.android.firebaseshoppinglist.utils;
 
 import android.content.Context;
 
+import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
+
 import java.text.SimpleDateFormat;
 
 /**
@@ -25,6 +27,16 @@ public class Utils {
     public static String encodeEmail(String email) {
 
         return email.replace(".",",");
+    }
+
+    /**
+     * Return true if currentUserEmail equals to shoppingList.owner()
+     * Return false otherwise
+     */
+    public static boolean checkIfOwner(ShoppingList shoppingList, String currentUserEmail)
+     {
+        return (shoppingList.getOwner() != null &&
+                shoppingList.getOwner().equals(currentUserEmail));
     }
 
 }

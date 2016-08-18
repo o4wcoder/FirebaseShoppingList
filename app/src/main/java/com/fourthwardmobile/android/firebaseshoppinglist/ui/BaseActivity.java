@@ -19,8 +19,6 @@ import com.firebase.client.Firebase;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.login.CreateAccountActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.login.LoginActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;

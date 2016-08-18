@@ -19,6 +19,7 @@ import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingListItem;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 
 /**
@@ -41,6 +42,9 @@ public class ActiveListDetailsActivity extends BaseActivity {
     private ActiveListItemAdapter mActiveListItemAdapter;
     private ValueEventListener mAddValueEventListener;
 
+    //STores whether the current user is the owner
+    private boolean mCurrentUserIsOwner = false;
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,33 +59,44 @@ public class ActiveListDetailsActivity extends BaseActivity {
             finish();
         }
 
-        /**
-         * Link layout elements from XML and setup the toolbar
-         */
-        initializeScreen();
-
-        // TODO Add the Firebase code here that will set the appropriate title for the
-        // detail screen using setTitle and passing in the name of the current
-        // shopping list. You might want to save this shopping list as well.
-        // You can but the invalidateOptionsMenu call inside of the same block of code.
-        // If the shopping list doesn't exist, close the activity using finish()
+        //Get Firebase reference to the list
         mActiveListRef = new Firebase(Constants.FIREBASE_URL).child(Constants.FIREBASE_LOCATION_ACTIVE_LISTS).child(mListId);
 
         mAddValueEventListener = new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                mShoppingList = dataSnapshot.getValue(ShoppingList.class);
-                if(mShoppingList != null) {
+            public void onDataChange(DataSnapshot snapshot) {
 
-                    /* Calling invalidateOptionsMenu causes onCreateOptionsMenu to be called */
-                    invalidateOptionsMenu();
+                /**
+                 * Saving the most recent version of current shopping list into mShoppingList if present
+                 * finish() the activity if the list is null (list was removed or unshared by it's owner
+                 * while current user is in the list details activity)
+                 */
+                ShoppingList shoppingList = snapshot.getValue(ShoppingList.class);
 
-                    //Set title of Activity to list name
-                    setTitle(mShoppingList.getListName());
-                } else {
-                    //Not date, close activity
+                if (shoppingList == null) {
                     finish();
+                    /**
+                     * Make sure to call return, otherwise the rest of the method will execute,
+                     * even after calling finish.
+                     */
+                    return;
                 }
+                mShoppingList = shoppingList;
+                /**
+                 * Pass the shopping list to the adapter if it is not null.
+                 * We do this here because mShoppingList is null when first created.
+                 */
+                mActiveListItemAdapter.setShoppingList(mShoppingList);
+
+                /* Check if the current user is owner */
+                mCurrentUserIsOwner = Utils.checkIfOwner(shoppingList, mEncodedEmail);
+
+
+                /* Calling invalidateOptionsMenu causes onCreateOptionsMenu to be called */
+                invalidateOptionsMenu();
+
+                /* Set title appropriately. */
+                setTitle(shoppingList.getListName());
             }
 
             @Override
@@ -89,6 +104,12 @@ public class ActiveListDetailsActivity extends BaseActivity {
 
             }
         };
+
+        /**
+         * Link layout elements from XML and setup the toolbar
+         */
+        initializeScreen();
+
         mActiveListRef.addValueEventListener(mAddValueEventListener);
 
         Firebase listItemRef = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS).child(mListId);
@@ -131,8 +152,8 @@ public class ActiveListDetailsActivity extends BaseActivity {
         MenuItem archive = menu.findItem(R.id.action_archive);
 
         /* Only the edit and remove options are implemented */
-        remove.setVisible(true);
-        edit.setVisible(true);
+        remove.setVisible(mCurrentUserIsOwner);
+        edit.setVisible(mCurrentUserIsOwner);
         share.setVisible(false);
         archive.setVisible(false);
 

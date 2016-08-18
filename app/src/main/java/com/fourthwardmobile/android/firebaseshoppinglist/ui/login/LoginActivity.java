@@ -153,6 +153,21 @@ public class LoginActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        //Check to see whether SharePreferences has an email set for someone trying to sign up
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor spe = sp.edit();
+
+        //Get the newly registered user email if present, use null as default value
+        String signupEmail = sp.getString(Constants.KEY_SIGNUP_EMAIL,null);
+
+        //Fill in the email editText and remove value from SharePreference if email is present
+        if(signupEmail != null) {
+            mEditTextEmailInput.setText(signupEmail);
+
+            //Clear signupEmail sharePreferences to make sure that they are used just once
+            spe.putString(Constants.KEY_SIGNUP_EMAIL,null).apply();
+        }
     }
 
     @Override
@@ -247,7 +262,8 @@ public class LoginActivity extends BaseActivity {
                             }
                         } else {
 
-                            mEncodedEmail = Utils.encodeEmail(email);
+
+                            setAuthenticatedUserPasswordProvider(task.getResult().getUser());
 
                             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                             SharedPreferences.Editor spe = sp.edit();
@@ -264,14 +280,84 @@ public class LoginActivity extends BaseActivity {
 
     }
 
-//    /**
-//     * Helper method that makes sure a user is created if the user
-//     * logs in with Firebase's email/password provider.
-//     * @param authData AuthData object returned from onAuthenticated
-//     */
-//    private void setAuthenticatedUserPasswordProvider(AuthData authData) {
-//    }
+    /**
+     * Helper method that makes sure a user is created if the user
+     * logs in with Firebase's email/password provider.
+     */
+    private void setAuthenticatedUserPasswordProvider(FirebaseUser user) {
+
+        final String unprocessedEmail = user.getEmail();
+        mEncodedEmail = Utils.encodeEmail(unprocessedEmail);
+
+        final Firebase userRef = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);
+
+        //Check if current user has logged in at least once
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                User user = dataSnapshot.getValue(User.class);
+
+                if (user != null) {
+
+                    /**
+                     * If recently registered user has hasLoggedInWithPassword = "false
+                     * (never logged in using password provider)
+                     */
+                    if (!user.isHasLoggedInWithPassword()) {
+
+                        /**
+                         * Change password if user that just signed in signed up recently to make
+                         * sure that user will be able to use temporary passwrd from the email more
+                         * than 24 hours
+                         */
+
+                         mAuth.getCurrentUser().updatePassword(mEditTextPasswordInput.getText().toString())
+                                 .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                     @Override
+                                     public void onComplete(@NonNull Task<Void> task) {
+                                         if (task.isSuccessful()) {
+                                             Log.e(LOG_TAG,"updatePassword():onComplete successful");
+                                             userRef.child(Constants.FIREBASE_PROPERTY_USER_HAS_LOGGED_IN_WITH_PASSWORD)
+                                                 .setValue(true);
+                                         Log.e(LOG_TAG,getString(R.string.log_message_password_changed_successfully) +
+                                         mEditTextPasswordInput.getText().toString());
+                                         } else {
+                                             Log.e(LOG_TAG,getString(R.string.log_error_failed_to_change_password) + task.getException().getMessage());
+                                         }
+
+                                     }
+                                 });
+
+
+//                                 addOnSuccessListener(new Firebase.ResultHandler() {
+//                                                          @Override
+//                                                          public void onSuccess() {
+//                                                              userRef.child(Constants.FIREBASE_PROPERTY_USER_HAS_LOGGED_IN_WITH_PASSWORD)
+//                                                 .setValue(true);
+//                                         Log.e(LOG_TAG,getString(R.string.log_message_password_changed_successfully) +
+//                                         mEditTextPasswordInput.getText().toString());
+//                                                          }
 //
+//                                                          @Override
+//                                                          public void onError(FirebaseError firebaseError) {
+//                                                              Log.e(LOG_TAG,getString(R.string.log_error_failed_to_change_password) + firebaseError);
+//                                                          }
+//                                                      });
+
+
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+
+                Log.e(LOG_TAG,getString(R.string.log_error_the_read_failed) + firebaseError.getMessage());
+            }
+        });
+
+    }
+
 //    /**
 //     * Helper method that makes sure a user is created if the user
 //     * logs in with Firebase's Google login provider.
@@ -491,56 +577,5 @@ public class LoginActivity extends BaseActivity {
         startActivity(intent);
         finish();
     }
-    /**
-     * Gets the GoogleAuthToken and logs in.
-     */
-//    private void getGoogleOAuthTokenAndLogin() {
-//        /* Get OAuth token in Background */
-//        AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
-//            String mErrorMessage = null;
-//
-//            @Override
-//            protected String doInBackground(Void... params) {
-//                String token = null;
-//
-//                try {
-//                    String scope = String.format(getString(R.string.oauth2_format), new Scope(Scopes.PROFILE)) + " email";
-//
-//                    token = GoogleAuthUtil.getToken(LoginActivity.this, mGoogleAccount.getEmail(), scope);
-//                } catch (IOException transientEx) {
-//                    /* Network or server error */
-//                    Log.e(LOG_TAG, getString(R.string.google_error_auth_with_google) + transientEx);
-//                    mErrorMessage = getString(R.string.google_error_network_error) + transientEx.getMessage();
-//                } catch (UserRecoverableAuthException e) {
-//                    Log.w(LOG_TAG, getString(R.string.google_error_recoverable_oauth_error) + e.toString());
-//
-//                    /* We probably need to ask for permissions, so start the intent if there is none pending */
-//                    if (!mGoogleIntentInProgress) {
-//                        mGoogleIntentInProgress = true;
-//                        Intent recover = e.getIntent();
-//                        startActivityForResult(recover, RC_GOOGLE_LOGIN);
-//                    }
-//                } catch (GoogleAuthException authEx) {
-//                    /* The call is not ever expected to succeed assuming you have already verified that
-//                     * Google Play services is installed. */
-//                    Log.e(LOG_TAG, " " + authEx.getMessage(), authEx);
-//                    mErrorMessage = getString(R.string.google_error_auth_with_google) + authEx.getMessage();
-//                }
-//                return token;
-//            }
-//
-//            @Override
-//            protected void onPostExecute(String token) {
-//                mAuthProgressDialog.dismiss();
-//                if (token != null) {
-//                    /* Successfully got OAuth token, now login with Google */
-//                    loginWithGoogle(token);
-//                } else if (mErrorMessage != null) {
-//                    showErrorToast(mErrorMessage);
-//                }
-//            }
-//        };
-//
-//        task.execute();
-//    }
+
 }

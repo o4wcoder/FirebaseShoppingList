@@ -93,6 +93,14 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
 
     }
 
+    /**
+     * Public method that is used to pass shoppingList object when it is loaded in ValueEventListener
+     */
+    public void setShoppingList(ShoppingList shoppingList) {
+        this.mShoppingList = shoppingList;
+        this.notifyDataSetChanged();
+    }
+
     private void removeItem(String itemId) {
 
         Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);

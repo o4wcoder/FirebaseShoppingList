@@ -7,10 +7,10 @@ import java.util.HashMap;
  */
 public class User {
 
-    String name;
-    String email;
-
+    private String name;
+    private String email;
     private HashMap<String, Object> timestampJoined;
+    private boolean hasLoggedInWithPassword;
 
     public User() {}
 
@@ -19,6 +19,7 @@ public class User {
         this.name = name;
         this.email = email;
         this.timestampJoined = timestampJoined;
+        this.hasLoggedInWithPassword = false;
     }
 
     public String getName() {
@@ -43,5 +44,9 @@ public class User {
 
     public void setTimestampCreated(HashMap<String, Object> timestampCreated) {
         this.timestampJoined = timestampCreated;
+    }
+
+    public boolean isHasLoggedInWithPassword() {
+        return hasLoggedInWithPassword;
     }
 }

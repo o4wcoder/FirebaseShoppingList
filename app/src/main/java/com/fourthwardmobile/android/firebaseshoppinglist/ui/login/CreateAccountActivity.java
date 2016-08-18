@@ -5,7 +5,9 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.login;
  */
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.Patterns;
@@ -27,12 +29,16 @@ import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,8 +49,9 @@ import java.util.Map;
 public class CreateAccountActivity extends BaseActivity {
     private static final String TAG = CreateAccountActivity.class.getSimpleName();
     private ProgressDialog mAuthProgressDialog;
-    private EditText mEditTextUsernameCreate, mEditTextEmailCreate, mEditTextPasswordCreate;
+    private EditText mEditTextUsernameCreate, mEditTextEmailCreate;
     private String mUserName,mUserEmail,mPassword;
+    private SecureRandom mRandom = new SecureRandom();
 
     //Firebase Authentication
     private FirebaseAuth mAuth;
@@ -80,14 +87,13 @@ public class CreateAccountActivity extends BaseActivity {
     public void initializeScreen() {
         mEditTextUsernameCreate = (EditText) findViewById(R.id.edit_text_username_create);
         mEditTextEmailCreate = (EditText) findViewById(R.id.edit_text_email_create);
-        mEditTextPasswordCreate = (EditText) findViewById(R.id.edit_text_password_create);
         LinearLayout linearLayoutCreateAccountActivity = (LinearLayout) findViewById(R.id.linear_layout_create_account_activity);
         initializeBackground(linearLayoutCreateAccountActivity);
 
         /* Setup the progress dialog that is displayed later when authenticating with Firebase */
         mAuthProgressDialog = new ProgressDialog(this);
         mAuthProgressDialog.setTitle(getResources().getString(R.string.progress_dialog_loading));
-        mAuthProgressDialog.setMessage(getResources().getString(R.string.progress_dialog_creating_user_with_firebase));
+        mAuthProgressDialog.setMessage(getResources().getString(R.string.progress_dialog_check_inbox));
         mAuthProgressDialog.setCancelable(false);
     }
 
@@ -110,14 +116,15 @@ public class CreateAccountActivity extends BaseActivity {
 
         mUserName = mEditTextUsernameCreate.getText().toString();
         mUserEmail = mEditTextEmailCreate.getText().toString();
-        mPassword = mEditTextPasswordCreate.getText().toString();
+        //Get randomly generated password
+        mPassword = new BigInteger(130,mRandom).toString(32);
 
         //Check if input is valid
         boolean validUser = isUserNameValid(mUserName);
         boolean validEmail = isEmailValid(mUserEmail);
-        boolean validPass = isPasswordValid(mPassword);
 
-        if(validUser && validEmail && validPass) {
+
+        if(validUser && validEmail) {
 
             //If everything was vallid show progress dialog
             mAuthProgressDialog.show();
@@ -139,10 +146,56 @@ public class CreateAccountActivity extends BaseActivity {
                                }
                             } else {
                                 Log.e(TAG,"Success creating firebase user. Add to the database");
-                                createUserInFirebaseHelper();
+
+                                /**
+                                 * If user was successfully created, send user a temporary 24h password
+                                 * to the email provided and make sure that user owns the specified
+                                 * email.
+                                 */
+                            mAuth.sendPasswordResetEmail(mUserEmail)
+                                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void aVoid) {
+                                          //Password email was sent
+                                            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(CreateAccountActivity.this);
+                                            SharedPreferences.Editor spe = sp.edit();
+
+
+                                            /**
+                                             * Save name and email to shared Preferences to create User
+                                             * database record when the registered user will sign in
+                                             * for the first time
+                                             */
+                                            spe.putString(Constants.KEY_SIGNUP_EMAIL, mUserEmail).apply();
+
+                                            //Add user to Firebase DB
+                                            createUserInFirebaseHelper();
+
+                                            /**
+                                             * Password reset email sent, open app chooser to pick app
+                                             * for handling inbox email intent
+                                             */
+                                            Intent intent = new Intent(Intent.ACTION_MAIN);
+                                            intent.addCategory(Intent.CATEGORY_APP_EMAIL);
+
+                                            try {
+                                                startActivity(intent);
+                                            } catch (android.content.ActivityNotFoundException ex) {
+                                                //User does not have any app to handle email
+                                            }
+
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                     Log.e(TAG,getString(R.string.log_error_occurred) + e.getMessage());
+                                }
+                            });
+
+
                             }
 
-
+                            //All done stop progress dialog
                             mAuthProgressDialog.dismiss();
                         }
                     });
@@ -211,15 +264,15 @@ public class CreateAccountActivity extends BaseActivity {
         return true;
     }
 
-    private boolean isPasswordValid(String password) {
-
-        if(password.length() < 6) {
-            mEditTextPasswordCreate.setError(getResources().getString(R.string.error_invalid_password_not_valid));
-
-            return false;
-        }
-        return true;
-    }
+//    private boolean isPasswordValid(String password) {
+//
+//        if(password.length() < 6) {
+//            mEditTextPasswordCreate.setError(getResources().getString(R.string.error_invalid_password_not_valid));
+//
+//            return false;
+//        }
+//        return true;
+//    }
 
     /**
      * Show error toast to users
