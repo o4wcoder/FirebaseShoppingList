@@ -6,21 +6,35 @@ package com.fourthwardmobile.android.firebaseshoppinglist.model;
 public class ShoppingListItem {
 
     private String itemName;
-    private String itemOwner;
+    private String owner;
+    private String boughtBy;
+    private boolean bought;
 
     public ShoppingListItem() {
     }
 
     public ShoppingListItem(String itemName, String owner) {
         this.itemName = itemName;
-        this.itemOwner = owner;
+        this.owner = owner;
+        this.boughtBy = null;
+        this.bought = false;
     }
 
     public String getItemName() {
         return itemName;
     }
 
-    public String getItemOwner() {
-        return itemOwner;
+    public String getOwner() {
+        return owner;
     }
+
+    public String getBoughtBy() {
+        return boughtBy;
+    }
+
+    public boolean isBought() {
+        return bought;
+    }
+
+
 }

@@ -36,18 +36,14 @@ public class EditListItemNameDialogFragment extends EditListDialogFragment {
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
-    public static EditListItemNameDialogFragment newInstance(ShoppingList shoppingList,String listId,
-                                                             ShoppingListItem shoppingListItem,
-                                                             String itemId,String encodedEmail) {
-        Log.e(TAG,"newInstance()");
+    public static EditListItemNameDialogFragment newInstance(ShoppingList shoppingList, String itemName,
+                                                             String itemId, String listId, String encodedEmail) {
         EditListItemNameDialogFragment editListItemNameDialogFragment = new EditListItemNameDialogFragment();
 
-
-        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList,
-                R.layout.dialog_edit_item,listId,encodedEmail);
-
-        bundle.putString(Constants.KEY_LIST_ITEM_NAME,shoppingListItem.getItemName());
-        bundle.putString(Constants.KEY_LIST_ITEM_ID,itemId);
+        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList, R.layout.dialog_edit_item,
+                listId, encodedEmail);
+        bundle.putString(Constants.KEY_LIST_ITEM_NAME, itemName);
+        bundle.putString(Constants.KEY_LIST_ITEM_ID, itemId);
         editListItemNameDialogFragment.setArguments(bundle);
 
         return editListItemNameDialogFragment;

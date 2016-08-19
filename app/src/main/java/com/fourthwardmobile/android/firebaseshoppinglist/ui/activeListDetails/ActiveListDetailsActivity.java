@@ -21,6 +21,8 @@ import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
+import java.util.HashMap;
+
 
 /**
  * Represents the details screen for the selected shopping list
@@ -30,7 +32,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
     /*************************************************************************************/
     /*                                  Constants                                        */
     /*************************************************************************************/
-    private static final String TAG = ActiveListDetailsActivity.class.getSimpleName();
+    private static final String LOG_TAG = ActiveListDetailsActivity.class.getSimpleName();
 
     /*************************************************************************************/
     /*                                  Local Data                                       */
@@ -53,7 +55,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
         //GEt push key
         mListId = getIntent().getExtras().getString(Constants.KEY_LIST_ID);
 
-        Log.e(TAG,"Got key in detail activity = " + mListId);
+        Log.e(LOG_TAG,"Got key in detail activity = " + mListId);
         if(mListId == null) {
             //No use in continuing if the key is null
             finish();
@@ -115,7 +117,8 @@ public class ActiveListDetailsActivity extends BaseActivity {
         Firebase listItemRef = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS).child(mListId);
 
         //Create Firebase adapter for displaying list if items
-        mActiveListItemAdapter = new ActiveListItemAdapter(this, ShoppingListItem.class,R.layout.single_active_list_item,listItemRef,mListId);
+        mActiveListItemAdapter = new ActiveListItemAdapter(this, ShoppingListItem.class,
+                R.layout.single_active_list_item,listItemRef,mListId, mEncodedEmail);
         //Set adapter to listview
         mListView.setAdapter(mActiveListItemAdapter);
 
@@ -129,11 +132,58 @@ public class ActiveListDetailsActivity extends BaseActivity {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 /* Check that the view is not the empty footer item */
-                if(view.getId() != R.id.list_view_footer_empty) {
+                if (view.getId() != R.id.list_view_footer_empty) {
+                    ShoppingListItem shoppingListItem = mActiveListItemAdapter.getItem(position);
 
-                    showEditListItemNameDialog(position);
+                    if (shoppingListItem != null) {
+                        String itemName = shoppingListItem.getItemName();
+                        String itemId = mActiveListItemAdapter.getRef(position).getKey();
+
+                        showEditListItemNameDialog(itemName, itemId);
+                        return true;
+                    }
                 }
-                return true;
+                return false;
+            }
+        });
+
+              /* Perform buy/return action on listView item click event if current user is shopping. */
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                /* Check that the view is not the empty footer item */
+                if (view.getId() != R.id.list_view_footer_empty) {
+                    final ShoppingListItem selectedListItem = mActiveListItemAdapter.getItem(position);
+                    String itemId = mActiveListItemAdapter.getRef(position).getKey();
+
+                    if (selectedListItem != null) {
+
+                            /* Create map and fill it in with deep path multi write operations list */
+                        HashMap<String, Object> updatedItemBoughtData = new HashMap<String, Object>();
+
+                            /* Buy selected item if it is NOT already bought */
+                        if (!selectedListItem.isBought()) {
+                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, true);
+                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, mEncodedEmail);
+                        } else {
+                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, false);
+                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, null);
+                        }
+
+                            /* Do update */
+                        Firebase firebaseItemLocation = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS)
+                                .child(mListId).child(itemId);
+                        firebaseItemLocation.updateChildren(updatedItemBoughtData, new Firebase.CompletionListener() {
+                            @Override
+                            public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                if (firebaseError != null) {
+                                    Log.d(LOG_TAG, getString(R.string.log_error_updating_data) +
+                                            firebaseError.getMessage());
+                                }
+                            }
+                        });
+                    }
+                }
             }
         });
     }
@@ -266,7 +316,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
      * Show edit list name dialog when user selects "Edit list name" menu item
      */
     public void showEditListNameDialog() {
-        Log.e(TAG,"showEditListNameDialog()");
+        Log.e(LOG_TAG,"showEditListNameDialog()");
         /* Create an instance of the dialog fragment and show it */
         DialogFragment dialog = EditListNameDialogFragment.newInstance(mShoppingList,mListId,mEncodedEmail);
         dialog.show(this.getFragmentManager(), "EditListNameDialogFragment");
@@ -275,12 +325,11 @@ public class ActiveListDetailsActivity extends BaseActivity {
     /**
      * Show the edit list item name dialog after longClick on the particular item
      */
-    public void showEditListItemNameDialog(int position) {
+    public void showEditListItemNameDialog(String itemName, String itemId) {
         /* Create an instance of the dialog fragment and show it */
-        ShoppingListItem shoppingListItem = mActiveListItemAdapter.getItem(position);
-        String itemId = mActiveListItemAdapter.getRef(position).getKey();
-        DialogFragment dialog = EditListItemNameDialogFragment.newInstance(mShoppingList,mListId,
-                shoppingListItem, itemId,mEncodedEmail);
+        DialogFragment dialog = EditListItemNameDialogFragment.newInstance(mShoppingList, itemName,
+                itemId, mListId, mEncodedEmail);
+
         dialog.show(this.getFragmentManager(), "EditListItemNameDialogFragment");
     }
 
