@@ -66,7 +66,7 @@ public class LoginActivity extends BaseActivity {
     private EditText mEditTextEmailInput, mEditTextPasswordInput;
 
     private FirebaseAuth mAuth;
-   // private FirebaseAuth.AuthStateListener mAuthListener;
+    private FirebaseAuth.AuthStateListener mAuthListener;
     //private GoogleApiClient mGoogleApiClient;
 
     /**
@@ -154,6 +154,31 @@ public class LoginActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
 
+        /**
+         * This is the authentication listener that maintain the current user session
+         * and signs in automatically on application launch
+         */
+
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                hideProgressDialog();
+
+                /**
+                 * If there is a valid session to be restored, start MainActivity.
+                 * No need to pass data via SharedPreferences because app
+                 * already holds userName/provider data from the latest session
+                 */
+                if (firebaseAuth != null) {
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                }
+            }
+        };
+        mAuth.addAuthStateListener(mAuthListener);
         //Check to see whether SharePreferences has an email set for someone trying to sign up
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor spe = sp.edit();
@@ -173,6 +198,8 @@ public class LoginActivity extends BaseActivity {
     @Override
     public void onPause() {
         super.onPause();
+
+        mAuth.removeAuthStateListener(mAuthListener);
     }
 
     /**

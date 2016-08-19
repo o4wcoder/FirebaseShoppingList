@@ -2,13 +2,16 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.activeListDetails;
 
 import android.app.DialogFragment;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
@@ -17,10 +20,12 @@ import com.firebase.client.ValueEventListener;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingListItem;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.BaseActivity;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 
@@ -39,13 +44,20 @@ public class ActiveListDetailsActivity extends BaseActivity {
     /*************************************************************************************/
     private ListView mListView;
     private ShoppingList mShoppingList;
-    private Firebase mActiveListRef;
+    private Firebase mActiveListRef, mCurrentUserRef;
     private String mListId;
     private ActiveListItemAdapter mActiveListItemAdapter;
-    private ValueEventListener mAddValueEventListener;
+    private ValueEventListener mAddValueEventListener, mCurrentUserRefListener;
 
-    //STores whether the current user is the owner
+    //Stores whether the current user is the owner
     private boolean mCurrentUserIsOwner = false;
+
+    //Stores whether the current user is shopping
+    private boolean mShopping = false;
+
+    private Button mButtonShopping;
+    private TextView mTextViewPeopleShopping;
+    private User mCurrentUser;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -63,6 +75,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
 
         //Get Firebase reference to the list
         mActiveListRef = new Firebase(Constants.FIREBASE_URL).child(Constants.FIREBASE_LOCATION_ACTIVE_LISTS).child(mListId);
+        mCurrentUserRef = new Firebase(Constants.FIREBASE_URL_USERS).child(mEncodedEmail);
 
         mAddValueEventListener = new ValueEventListener() {
             @Override
@@ -99,6 +112,27 @@ public class ActiveListDetailsActivity extends BaseActivity {
 
                 /* Set title appropriately. */
                 setTitle(shoppingList.getListName());
+
+                /**
+                 * Whent the list changes, you can check to see if the current user is part of the
+                 * shopping users. If they are, you should style the green shopping button
+                 * appropriately and change the state of the activity to "shopping mode"
+                 */
+                HashMap<String, User> usersShopping = mShoppingList.getUsersShopping();
+                if (usersShopping != null && usersShopping.size() != 0 &&
+                        usersShopping.containsKey(mEncodedEmail)) {
+                    mShopping = true;
+                    mButtonShopping.setText(getString(R.string.button_stop_shopping));
+                    mButtonShopping.setBackgroundColor(ContextCompat.getColor(ActiveListDetailsActivity.this, R.color.dark_grey));
+                } else {
+                    mButtonShopping.setText(getString(R.string.button_start_shopping));
+                    mButtonShopping.setBackgroundColor(ContextCompat.getColor(ActiveListDetailsActivity.this, R.color.primary_dark));
+                    mShopping = false;
+                }
+
+                setWhosShoppingText(mShoppingList.getUsersShopping());
+
+
             }
 
             @Override
@@ -106,6 +140,23 @@ public class ActiveListDetailsActivity extends BaseActivity {
 
             }
         };
+
+        //Save teh most up-to-date version of current user in mCurrentUser
+        mCurrentUserRefListener = mCurrentUserRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                User currentUser = dataSnapshot.getValue(User.class);
+                if(currentUser != null)
+                    mCurrentUser = currentUser;
+                else
+                    finish();
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+                Log.e(LOG_TAG,getString(R.string.log_error_the_read_failed) + firebaseError.getMessage());
+            }
+        });
 
         /**
          * Link layout elements from XML and setup the toolbar
@@ -147,7 +198,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
             }
         });
 
-              /* Perform buy/return action on listView item click event if current user is shopping. */
+ /* Perform buy/return action on listView item click event if current user is shopping. */
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -157,35 +208,39 @@ public class ActiveListDetailsActivity extends BaseActivity {
                     String itemId = mActiveListItemAdapter.getRef(position).getKey();
 
                     if (selectedListItem != null) {
+                        /* If current user is shopping */
+                        if (mShopping) {
 
                             /* Create map and fill it in with deep path multi write operations list */
-                        HashMap<String, Object> updatedItemBoughtData = new HashMap<String, Object>();
+                            HashMap<String, Object> updatedItemBoughtData = new HashMap<String, Object>();
 
                             /* Buy selected item if it is NOT already bought */
-                        if (!selectedListItem.isBought()) {
-                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, true);
-                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, mEncodedEmail);
-                        } else {
-                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, false);
-                            updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, null);
-                        }
+                            if (!selectedListItem.isBought()) {
+                                updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, true);
+                                updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, mEncodedEmail);
+                            } else {
+                                updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT, false);
+                                updatedItemBoughtData.put(Constants.FIREBASE_PROPERTY_BOUGHT_BY, null);
+                            }
 
                             /* Do update */
-                        Firebase firebaseItemLocation = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS)
-                                .child(mListId).child(itemId);
-                        firebaseItemLocation.updateChildren(updatedItemBoughtData, new Firebase.CompletionListener() {
-                            @Override
-                            public void onComplete(FirebaseError firebaseError, Firebase firebase) {
-                                if (firebaseError != null) {
-                                    Log.d(LOG_TAG, getString(R.string.log_error_updating_data) +
-                                            firebaseError.getMessage());
+                            Firebase firebaseItemLocation = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS)
+                                    .child(mListId).child(itemId);
+                            firebaseItemLocation.updateChildren(updatedItemBoughtData, new Firebase.CompletionListener() {
+                                @Override
+                                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                    if (firebaseError != null) {
+                                        Log.d(LOG_TAG, getString(R.string.log_error_updating_data) +
+                                                firebaseError.getMessage());
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
                 }
             }
         });
+
     }
 
     @Override
@@ -260,6 +315,7 @@ public class ActiveListDetailsActivity extends BaseActivity {
 
         //Remove listeners
         mActiveListRef.removeEventListener(mAddValueEventListener);
+        mCurrentUserRef.removeEventListener(mCurrentUserRefListener);
     }
 
     /**
@@ -267,6 +323,8 @@ public class ActiveListDetailsActivity extends BaseActivity {
      */
     private void initializeScreen() {
         mListView = (ListView) findViewById(R.id.list_view_shopping_list_items);
+        mTextViewPeopleShopping = (TextView)findViewById(R.id.text_view_people_shopping);
+        mButtonShopping = (Button)findViewById(R.id.button_shopping);
         Toolbar toolbar = (Toolbar) findViewById(R.id.app_bar);
         /* Common toolbar setup */
         setSupportActionBar(toolbar);
@@ -338,5 +396,93 @@ public class ActiveListDetailsActivity extends BaseActivity {
      */
     public void toggleShopping(View view) {
 
+        /**
+         * If current user is already shopping, remove current user from usersShopping map
+         */
+        Firebase usersShoppingRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS)
+                .child(mListId).child(Constants.FIREBASE_PROPERTY_USERS_SHOPPING)
+                .child(mEncodedEmail);
+
+        //Either add or remove the current user from the usersShopping map
+        if(mShopping) {
+            usersShoppingRef.removeValue();
+        } else {
+            usersShoppingRef.setValue(mCurrentUser);
+        }
+
+    }
+
+    /**
+     * Set appropriate text for Start/Stop shopping button and Who's shopping textView
+     * depending on the current user shopping status
+     */
+    private void setWhosShoppingText(HashMap<String, User> usersShopping) {
+
+        if (usersShopping != null) {
+            ArrayList<String> usersWhoAreNotYou = new ArrayList<>();
+            /**
+             * If at least one user is shopping
+             * Add userName to the list of users shopping if this user is not current user
+             */
+            for (User user : usersShopping.values()) {
+                if (user != null && !(user.getEmail().equals(mEncodedEmail))) {
+                    usersWhoAreNotYou.add(user.getName());
+                }
+            }
+
+            int numberOfUsersShopping = usersShopping.size();
+            String usersShoppingText;
+
+            /**
+             * If current user is shopping...
+             * If current user is the only person shopping, set text to "You are shopping"
+             * If current user and one user are shopping, set text "You and userName are shopping"
+             * Else set text "You and N others shopping"
+             */
+            if (mShopping) {
+                switch (numberOfUsersShopping) {
+                    case 1:
+                        usersShoppingText = getString(R.string.text_you_are_shopping);
+                        break;
+                    case 2:
+                        usersShoppingText = String.format(
+                                getString(R.string.text_you_and_other_are_shopping),
+                                usersWhoAreNotYou.get(0));
+                        break;
+                    default:
+                        usersShoppingText = String.format(
+                                getString(R.string.text_you_and_number_are_shopping),
+                                usersWhoAreNotYou.size());
+                }
+                /**
+                 * If current user is not shopping..
+                 * If there is only one person shopping, set text to "userName is shopping"
+                 * If there are two users shopping, set text "userName1 and userName2 are shopping"
+                 * Else set text "userName and N others shopping"
+                 */
+            } else {
+                switch (numberOfUsersShopping) {
+                    case 1:
+                        usersShoppingText = String.format(
+                                getString(R.string.text_other_is_shopping),
+                                usersWhoAreNotYou.get(0));
+                        break;
+                    case 2:
+                        usersShoppingText = String.format(
+                                getString(R.string.text_other_and_other_are_shopping),
+                                usersWhoAreNotYou.get(0),
+                                usersWhoAreNotYou.get(1));
+                        break;
+                    default:
+                        usersShoppingText = String.format(
+                                getString(R.string.text_other_and_number_are_shopping),
+                                usersWhoAreNotYou.get(0),
+                                usersWhoAreNotYou.size() - 1);
+                }
+            }
+            mTextViewPeopleShopping.setText(usersShoppingText);
+        } else {
+            mTextViewPeopleShopping.setText("");
+        }
     }
 }
