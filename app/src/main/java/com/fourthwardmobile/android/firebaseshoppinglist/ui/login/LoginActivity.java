@@ -105,55 +105,16 @@ public class LoginActivity extends BaseActivity {
             }
         });
 
-        //Respond to changes in the user's sign-in state
-//        mAuthListener = new FirebaseAuth.AuthStateListener() {
-//
-//            @Override
-//            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-//
-//                FirebaseUser user = firebaseAuth.getCurrentUser();
-//
-//                if(user != null) {
-//                    //User is signed in
-//                    Log.e(LOG_TAG, "onAuthStateChanged() Signed in user " + user.getEmail());
-//                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-//                    //Clear back stack so clicking the back button does not bring user back
-//                    //to the login screen
-//                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-//                    startActivity(intent);
-//                    //Close login screen
-//                    finish();
-//                } else {
-//                    // User is signed out
-//                    Log.e(LOG_TAG,"onAuthStateChanged() Singed out user ");
-//                }
-//            }
-//        };
-
-
-
 
 
     }
 
-//    @Override
-//    public void onStart() {
-//        super.onStart();
-//        mAuth.addAuthStateListener(mAuthListener);
-//    }
-//
-//    @Override
-//    public void onStop() {
-//        super.onStop();
-//        if (mAuthListener != null) {
-//            mAuth.removeAuthStateListener(mAuthListener);
-//        }
-//    }
 
     @Override
     protected void onResume() {
         super.onResume();
 
+        Log.e(LOG_TAG,"onResume()");
         /**
          * This is the authentication listener that maintain the current user session
          * and signs in automatically on application launch
@@ -165,12 +126,14 @@ public class LoginActivity extends BaseActivity {
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 hideProgressDialog();
 
+                Log.e(LOG_TAG,"onResume():onAuthStateChanged Already logged in, to go MainActivity()");
                 /**
                  * If there is a valid session to be restored, start MainActivity.
                  * No need to pass data via SharedPreferences because app
                  * already holds userName/provider data from the latest session
                  */
-                if (firebaseAuth != null) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
