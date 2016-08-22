@@ -11,7 +11,9 @@ import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import java.util.HashMap;
 
@@ -20,18 +22,22 @@ import java.util.HashMap;
  * Lets the user remove active shopping list
  */
 public class RemoveListDialogFragment extends DialogFragment {
+    String mListId;
+    String mListOwner;
+    HashMap mSharedWith;
 
-    private static final String TAG = RemoveListDialogFragment.class.getSimpleName();
-
-    private String mListId;
+    final static String LOG_TAG = RemoveListDialogFragment.class.getSimpleName();
 
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
-    public static RemoveListDialogFragment newInstance(ShoppingList shoppingList, String mListId) {
+    public static RemoveListDialogFragment newInstance(ShoppingList shoppingList, String listId,
+                                                       HashMap<String, User> sharedWithUsers) {
         RemoveListDialogFragment removeListDialogFragment = new RemoveListDialogFragment();
         Bundle bundle = new Bundle();
-        bundle.putString(Constants.KEY_LIST_ID,mListId);
+        bundle.putString(Constants.KEY_LIST_ID, listId);
+        bundle.putString(Constants.KEY_LIST_OWNER, shoppingList.getOwner());
+        bundle.putSerializable(Constants.KEY_SHARED_WITH_USERS, sharedWithUsers);
         removeListDialogFragment.setArguments(bundle);
         return removeListDialogFragment;
     }
@@ -42,8 +48,9 @@ public class RemoveListDialogFragment extends DialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         mListId = getArguments().getString(Constants.KEY_LIST_ID);
+        mListOwner = getArguments().getString(Constants.KEY_LIST_OWNER);
+        mSharedWith = (HashMap) getArguments().getSerializable(Constants.KEY_SHARED_WITH_USERS);
     }
 
     @Override
@@ -70,34 +77,30 @@ public class RemoveListDialogFragment extends DialogFragment {
     }
 
     private void removeList() {
-
-//        Firebase shoppingListRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS).child(mListId);
-//        Log.e(TAG,"removeList()");
-//        shoppingListRef.removeValue();
-
-        //We want to delete the list AND any items in that list (if there are any)
-
-        //Create map and fill it with the deep path multi write operation list
-        HashMap<String,Object> removeListData = new HashMap<>();
-
-
-        removeListData.put("/" + Constants.FIREBASE_LOCATION_ACTIVE_LISTS + "/"
-        + mListId,null);
-        removeListData.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
-        + mListId, null);
-
         Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
 
-        //Do a deep-path update
-        firebaseRef.updateChildren(removeListData,(new Firebase.CompletionListener() {
+        /**
+         * Create map and fill it in with deep path multi write operations list
+         */
+        HashMap<String, Object> removeListData = new HashMap<String, Object>();
+
+        /* Remove the ShoppingLists from both user lists and active lists */
+        Utils.updateMapForAllWithValue(mSharedWith, mListId, mListOwner, removeListData, "", null);
+
+        /* Remove the associated list items */
+        removeListData.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/" + mListId,
+                null);
+
+        /* Do a deep-path update */
+        firebaseRef.updateChildren(removeListData, new Firebase.CompletionListener() {
             @Override
             public void onComplete(FirebaseError firebaseError, Firebase firebase) {
 
-                if(firebaseError != null) {
-                    Log.e(TAG,getString(R.string.log_error_updating_data) + firebaseError.getMessage());
+                if (firebaseError != null) {
+                    Log.e(LOG_TAG, getString(R.string.log_error_updating_data) + firebaseError.getMessage());
                 }
             }
-        }));
+        });
     }
 
 }

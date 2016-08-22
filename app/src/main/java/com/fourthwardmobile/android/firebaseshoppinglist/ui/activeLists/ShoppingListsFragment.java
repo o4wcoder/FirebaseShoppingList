@@ -2,7 +2,9 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.activeLists;
 
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,9 +14,9 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
+import com.firebase.client.Query;
 import com.firebase.client.ValueEventListener;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
@@ -35,9 +37,7 @@ public class ShoppingListsFragment extends Fragment {
     private static final String TAG = ShoppingListsFragment.class.getSimpleName();
 
     private ListView mListView;
-//    private TextView mListNameTextView;
-//    private TextView mOwnerTextView;
-//    private TextView mTimestampTextView;
+    private String mEncodedEmail;
     private ActiveListAdapter mActiveListAdapter;
 
     public ShoppingListsFragment() {
@@ -48,9 +48,10 @@ public class ShoppingListsFragment extends Fragment {
      * Create fragment and pass bundle with data as it's arguments
      * Right now there are not arguments...but eventually there will be.
      */
-    public static ShoppingListsFragment newInstance() {
+    public static ShoppingListsFragment newInstance(String encodedEmail) {
         ShoppingListsFragment fragment = new ShoppingListsFragment();
         Bundle args = new Bundle();
+        args.putString(Constants.KEY_ENCODED_EMAIL,encodedEmail);
         fragment.setArguments(args);
         return fragment;
     }
@@ -62,6 +63,7 @@ public class ShoppingListsFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
+            mEncodedEmail = getArguments().getString(Constants.KEY_ENCODED_EMAIL);
         }
     }
 
@@ -76,35 +78,13 @@ public class ShoppingListsFragment extends Fragment {
 
         //Add listener to read from database when data has changed
        // Firebase listNameRef = new Firebase(Constants.FIREBASE_URL).child(Constants.FIREBASE_LOCATION_ACTIVE_LISTS);
-        Firebase activeListsRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS);
-//        listNameRef.addValueEventListener(new ValueEventListener() {
-//            @Override
-//            public void onDataChange(DataSnapshot dataSnapshot) {
-//                Log.e(TAG,"The data changed");
-//                //Get the name of the list
-//                ShoppingList shoppingList = dataSnapshot.getValue(ShoppingList.class);
-//                if(shoppingList != null) {
-//                    mListNameTextView.setText(shoppingList.getListName());
-//                    mOwnerTextView.setText(shoppingList.getOwner());
-//                    if(shoppingList.getTimestampLastChanged() != null) {
-//                        String strDate = Utils.SIMPLE_DATE_FORMAT.format(new Date(shoppingList.getTimestampLastChangedLong()));
-//                        mTimestampTextView.setText(String.valueOf(strDate));
-//                    }
-//                }
-//                else {
-//                    mTimestampTextView.setText("");
-//                }
-//            }
-//
-//            @Override
-//            public void onCancelled(FirebaseError firebaseError) {
-//
-//            }
-//        });
+//        Firebase activeListsRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS);
+
 
         //Set up adapter
-        mActiveListAdapter = new ActiveListAdapter(getActivity(),ShoppingList.class,R.layout.single_active_list,activeListsRef);
-        mListView.setAdapter(mActiveListAdapter);
+//        mActiveListAdapter = new ActiveListAdapter(getActivity(),ShoppingList.class,
+//                R.layout.single_active_list,activeListsRef,mEncodedEmail);
+//        mListView.setAdapter(mActiveListAdapter);
         /**
          * Set interactive bits, such as click events and adapters
          */
@@ -138,11 +118,59 @@ public class ShoppingListsFragment extends Fragment {
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onResume() {
+        super.onResume();
+        final SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String sortOrder = sharedPref.getString(Constants.KEY_PREF_SORT_ORDER_LISTS,Constants.ORDER_BY_KEY);
+
+        //Recreate the adapter when the user comes back from the SettingsActivity. Because of this
+        //Adapter creation was moved out of onCreateView.
+        //Grab the key/value pair that was set in SettingsActivity and modify the Firebase query
+        //that is passed to the adapter accordingly.
+        Query orderedActiveUserListsRef;
+        Firebase activeListsRef = new Firebase(Constants.FIREBASE_URL_USER_LISTS).child(mEncodedEmail);
+
+        /**
+         * Sort active lists by "date created" if it's been selectedc in the SettingsActivity
+         */
+        if (sortOrder.equals(Constants.ORDER_BY_KEY)) {
+            orderedActiveUserListsRef = activeListsRef.orderByKey();
+        } else {
+
+            /**
+             * Sort active by lists by name or datelastChanged. Otherwise
+             * depending on what's been selected in SettingsActivity
+             */
+
+            orderedActiveUserListsRef = activeListsRef.orderByChild(sortOrder);
+        }
+
+        /**
+         * Create the adapter with selected sort order
+         */
+        mActiveListAdapter = new ActiveListAdapter(getActivity(), ShoppingList.class,
+                R.layout.single_active_list, orderedActiveUserListsRef,
+                mEncodedEmail);
+
+        /**
+         * Set the adapter to the mListView
+         */
+        mListView.setAdapter(mActiveListAdapter);
+
+    }
+//    @Override
+//    public void onDestroy() {
+//        super.onDestroy();
+//        mActiveListAdapter.cleanup();
+//    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        //Since we're recreating the adpater whenever the user comes back to the activity,
+        //Need to move the cleanup of the adapter from onDestory, to onPause()
         mActiveListAdapter.cleanup();
     }
-
 
     /**
      * Link layout elements from XML

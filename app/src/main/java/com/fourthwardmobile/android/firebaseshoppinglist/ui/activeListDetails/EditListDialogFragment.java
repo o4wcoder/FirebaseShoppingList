@@ -16,40 +16,41 @@ import android.widget.TextView;
 
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+
+import java.util.HashMap;
 
 
 /**
  * Base class for {@link DialogFragment}s involved with editing a shopping list.
  */
 public abstract class EditListDialogFragment extends DialogFragment {
-
-    /***********************************************************************************/
-    /*                                 Constants                                       */
-    /***********************************************************************************/
-    private static final String TAG = EditListDialogFragment.class.getSimpleName();
-
+    String mListId, mOwner, mEncodedEmail;
     EditText mEditTextForList;
     int mResource;
-    String mListId;
-    String mEncodedEmail;
-    String mOwner;
+    HashMap mSharedWith;
 
     /**
      * Helper method that creates a basic bundle of all of the information needed to change
      * values in a shopping list.
      *
-     * @param shoppingList
-     * @param resource
-     * @return
+     * @param shoppingList The shopping list that the dialog is editing
+     * @param resource The xml layout file associated with the dialog
+     * @param listId The id of the shopping list the dialog is editing
+     * @param encodedEmail The encoded email of the current user
+     * @param sharedWithUsers The HashMap containing all users that the current shopping list
+     *                        is shared with
+     * @return The bundle containing all the arguments.
      */
     protected static Bundle newInstanceHelper(ShoppingList shoppingList, int resource, String listId,
-                                              String encodedEmail) {
+                                              String encodedEmail, HashMap<String, User> sharedWithUsers) {
         Bundle bundle = new Bundle();
+        bundle.putSerializable(Constants.KEY_SHARED_WITH_USERS, sharedWithUsers);
+        bundle.putString(Constants.KEY_LIST_ID, listId);
         bundle.putInt(Constants.KEY_LAYOUT_RESOURCE, resource);
-        bundle.putString(Constants.KEY_LIST_ID,listId);
-        bundle.putString(Constants.KEY_LIST_OWNER,shoppingList.getOwner());
-        bundle.putString(Constants.KEY_ENCODED_EMAIL,encodedEmail);
+        bundle.putString(Constants.KEY_LIST_OWNER, shoppingList.getOwner());
+        bundle.putString(Constants.KEY_ENCODED_EMAIL, encodedEmail);
         return bundle;
     }
 
@@ -59,9 +60,9 @@ public abstract class EditListDialogFragment extends DialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.e(TAG,"onCreate()");
-        mResource = getArguments().getInt(Constants.KEY_LAYOUT_RESOURCE);
+        mSharedWith = (HashMap) getArguments().getSerializable(Constants.KEY_SHARED_WITH_USERS);
         mListId = getArguments().getString(Constants.KEY_LIST_ID);
+        mResource = getArguments().getInt(Constants.KEY_LAYOUT_RESOURCE);
         mOwner = getArguments().getString(Constants.KEY_LIST_OWNER);
         mEncodedEmail = getArguments().getString(Constants.KEY_ENCODED_EMAIL);
     }
@@ -145,6 +146,5 @@ public abstract class EditListDialogFragment extends DialogFragment {
      * Method to be overriden with whatever edit is supposed to happen to the list
      */
     protected abstract void doListEdit();
-
-
 }
+

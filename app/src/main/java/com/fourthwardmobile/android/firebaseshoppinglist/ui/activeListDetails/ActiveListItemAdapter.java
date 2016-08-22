@@ -21,6 +21,7 @@ import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingListItem;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import java.util.HashMap;
 
@@ -28,11 +29,10 @@ import java.util.HashMap;
  * Created by Chris Hare on 7/28/2016.
  */
 public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem> {
-
     private ShoppingList mShoppingList;
     private String mListId;
     private String mEncodedEmail;
-
+    private HashMap<String, User> mSharedWithUsers;
 
     /**
      * Public constructor that initializes private instance variables when adapter is created
@@ -48,8 +48,13 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
     /**
      * Public method that is used to pass shoppingList object when it is loaded in ValueEventListener
      */
-    public void setmShoppingList(ShoppingList shoppingList) {
+    public void setShoppingList(ShoppingList shoppingList) {
         this.mShoppingList = shoppingList;
+        this.notifyDataSetChanged();
+    }
+
+    public void setSharedWithUsers(HashMap<String, User> sharedWithUsers) {
+        this.mSharedWithUsers = sharedWithUsers;
         this.notifyDataSetChanged();
     }
 
@@ -59,22 +64,23 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
      * populateView also handles data changes and updates the listView accordingly
      */
     @Override
-    protected void populateView(View view, final ShoppingListItem item,int position) {
-
+    protected void populateView(View view, final ShoppingListItem item, int position) {
 
         ImageButton buttonRemoveItem = (ImageButton) view.findViewById(R.id.button_remove_item);
         TextView textViewItemName = (TextView) view.findViewById(R.id.text_view_active_list_item_name);
-
-        final TextView textViewBoughtByUser = (TextView)view.findViewById(R.id.text_view_bought_by_user);
-        TextView textViewBoughtBy = (TextView)view.findViewById(R.id.text_view_bought_by);
+        final TextView textViewBoughtByUser = (TextView) view.findViewById(R.id.text_view_bought_by_user);
+        TextView textViewBoughtBy = (TextView) view.findViewById(R.id.text_view_bought_by);
 
         String owner = item.getOwner();
+
         textViewItemName.setText(item.getItemName());
 
-        setItemAppearanceBaseOnBoughtStatus(owner, textViewBoughtByUser, textViewBoughtBy, buttonRemoveItem,
-                                textViewItemName, item);
 
-        //Get the id of the item to remove
+        setItemAppearanceBaseOnBoughtStatus(owner, textViewBoughtByUser, textViewBoughtBy, buttonRemoveItem,
+                textViewItemName, item);
+
+
+        /* Gets the id of the item to remove */
         final String itemToRemoveId = this.getRef(position).getKey();
 
         /**
@@ -89,9 +95,10 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
                         .setMessage(mActivity.getString(R.string.dialog_message_are_you_sure_remove_item))
                         .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
-                                removeItem(itemToRemoveId);
-                                dialog.dismiss();
 
+                                removeItem(itemToRemoveId);
+                                /* Dismiss the dialog */
+                                dialog.dismiss();
                             }
                         })
                         .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -106,7 +113,24 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
                 alertDialog.show();
             }
         });
+    }
 
+    private void removeItem(String itemId) {
+        Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
+
+        /* Make a map for the removal */
+        HashMap<String, Object> updatedRemoveItemMap = new HashMap<String, Object>();
+
+        /* Remove the item by passing null */
+        updatedRemoveItemMap.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
+                + mListId + "/" + itemId, null);
+
+        /* Add the updated timestamp */
+        Utils.updateMapWithTimestampLastChanged(mSharedWithUsers,
+                mListId, mShoppingList.getOwner(), updatedRemoveItemMap);
+
+        /* Do the update */
+        firebaseRef.updateChildren(updatedRemoveItemMap);
     }
 
     private void setItemAppearanceBaseOnBoughtStatus(String owner, final TextView textViewBoughtByUser,
@@ -163,39 +187,15 @@ public class ActiveListItemAdapter extends FirebaseListAdapter<ShoppingListItem>
             textViewBoughtBy.setVisibility(View.INVISIBLE);
             textViewBoughtByUser.setVisibility(View.INVISIBLE);
             textViewBoughtByUser.setText("");
-            buttonRemoveItem.setVisibility(View.VISIBLE);
+            /**
+             * If you are the owner of the item or the owner of the list, then the remove icon
+             * is visible.
+             */
+            if (owner.equals(mEncodedEmail) || (mShoppingList != null && mShoppingList.getOwner().equals(mEncodedEmail))) {
+                buttonRemoveItem.setVisibility(View.VISIBLE);
+            } else {
+                buttonRemoveItem.setVisibility(View.INVISIBLE);
+            }
         }
-    }
-
-    /**
-     * Public method that is used to pass shoppingList object when it is loaded in ValueEventListener
-     */
-    public void setShoppingList(ShoppingList shoppingList) {
-        this.mShoppingList = shoppingList;
-        this.notifyDataSetChanged();
-    }
-
-    private void removeItem(String itemId) {
-
-        Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
-
-        //Make a map for removal
-        HashMap<String,Object> updatedRemoveItemMap = new HashMap<>();
-
-        //Remove the item by passing in null
-        updatedRemoveItemMap.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
-        + mListId + "/" + itemId, null);
-
-        //Make the timestamp for the last changed
-        HashMap<String,Object> changedTimestampMap = new HashMap<>();
-        changedTimestampMap.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
-
-        //Add the updated timestamp
-        updatedRemoveItemMap.put("/" + Constants.FIREBASE_LOCATION_ACTIVE_LISTS +
-        "/" + mListId + "/" + Constants.FIREBASE_PROPERTY_TIMESTAMP_LAST_CHANGED,changedTimestampMap);
-
-        //Do update
-        firebaseRef.updateChildren(updatedRemoveItemMap);
-
     }
 }

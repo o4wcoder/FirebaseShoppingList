@@ -10,7 +10,9 @@ import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingListItem;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,11 +39,12 @@ public class EditListItemNameDialogFragment extends EditListDialogFragment {
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
     public static EditListItemNameDialogFragment newInstance(ShoppingList shoppingList, String itemName,
-                                                             String itemId, String listId, String encodedEmail) {
+                                                             String itemId, String listId, String encodedEmail,
+                                                             HashMap<String, User> sharedWithUsers) {
         EditListItemNameDialogFragment editListItemNameDialogFragment = new EditListItemNameDialogFragment();
 
         Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList, R.layout.dialog_edit_item,
-                listId, encodedEmail);
+                listId, encodedEmail, sharedWithUsers);
         bundle.putString(Constants.KEY_LIST_ITEM_NAME, itemName);
         bundle.putString(Constants.KEY_LIST_ITEM_ID, itemId);
         editListItemNameDialogFragment.setArguments(bundle);
@@ -55,10 +58,8 @@ public class EditListItemNameDialogFragment extends EditListDialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         mItemName = getArguments().getString(Constants.KEY_LIST_ITEM_NAME);
         mItemId = getArguments().getString(Constants.KEY_LIST_ITEM_ID);
-
     }
 
 
@@ -69,7 +70,12 @@ public class EditListItemNameDialogFragment extends EditListDialogFragment {
          * superclass method that creates the dialog
          */
         Dialog dialog = super.createDialogHelper(R.string.positive_button_edit_item);
-        helpSetDefaultValueEditText(mItemName);
+        /**
+         * {@link EditListDialogFragment#helpSetDefaultValueEditText(String)} is a superclass
+         * method that sets the default text of the TextView
+         */
+        super.helpSetDefaultValueEditText(mItemName);
+
         return dialog;
     }
 
@@ -77,33 +83,29 @@ public class EditListItemNameDialogFragment extends EditListDialogFragment {
      * Change selected list item name to the editText input if it is not empty
      */
     protected void doListEdit() {
-
-        Log.e(TAG,"doListEdit()");
-
         String nameInput = mEditTextForList.getText().toString();
 
-        if(!nameInput.equals("") && !mItemName.equals(nameInput)) {
-
+        /**
+         * Set input text to be the current list item name if it is not empty and is not the
+         * previous name.
+         */
+        if (!nameInput.equals("") && !nameInput.equals(mItemName)) {
             Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
 
-            HashMap<String, Object> updatedItemToEditMap = new HashMap<>();
+            /* Make a map for the item you are changing the name of */
+            HashMap<String, Object> updatedDataItemToEditMap = new HashMap<String, Object>();
 
+            /* Add the new name to the update map*/
+            updatedDataItemToEditMap.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
+                            + mListId + "/" + mItemId + "/" + Constants.FIREBASE_PROPERTY_ITEM_NAME,
+                    nameInput);
 
+            /* Update affected lists timestamps */
+            Utils.updateMapWithTimestampLastChanged(mSharedWith, mListId, mOwner, updatedDataItemToEditMap);
 
-            //Add the new name and update the map
-            updatedItemToEditMap.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
-                    + mListId + "/" + mItemId +"/" + Constants.FIREBASE_PROPERTY_ITEM_NAME,nameInput);
+            /* Do the update */
+            firebaseRef.updateChildren(updatedDataItemToEditMap);
 
-            //Make the timestamp for the last changed
-            HashMap<String, Object> changedTimestampMap = new HashMap<>();
-            changedTimestampMap.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
-
-            //Add the updated timestamp
-            updatedItemToEditMap.put("/" + Constants.FIREBASE_LOCATION_ACTIVE_LISTS +
-                    "/" + mListId + "/" + Constants.FIREBASE_PROPERTY_TIMESTAMP_LAST_CHANGED,changedTimestampMap);
-
-
-            firebaseRef.updateChildren(updatedItemToEditMap);
         }
     }
 }

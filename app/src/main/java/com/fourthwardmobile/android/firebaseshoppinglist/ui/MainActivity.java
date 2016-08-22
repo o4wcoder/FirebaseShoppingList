@@ -1,6 +1,7 @@
 package com.fourthwardmobile.android.firebaseshoppinglist.ui;
 
 import android.app.DialogFragment;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -60,11 +61,12 @@ public class MainActivity extends BaseActivity {
         mUserRefListener = mUserRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.e(LOG_TAG,"onDataChange, user ref listener");
                 User user = dataSnapshot.getValue(User.class);
-
+                Log.e(LOG_TAG,"Got user from dataSnapshot");
                 //Set the activity title to current user name if user is  not null
                 if(user != null) {
-                    //Asumes that the first word in the user's name is the user's first name
+                    //Assumes that the first word in the user's name is the user's first name
                     String firstName = user.getName().split("\\s+")[0];
                     String title = getString(R.string.user_list_title,firstName);
                     setTitle(title);
@@ -78,6 +80,7 @@ public class MainActivity extends BaseActivity {
                      firebaseError.getMessage());
             }
         });
+
     }
 
 
@@ -100,7 +103,14 @@ public class MainActivity extends BaseActivity {
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-      //  int id = item.getItemId();
+        int id = item.getItemId();
+        /**
+         * Open SettingsActivity with sort options when Sort icon was clicked
+         */
+        if (id == R.id.action_sort) {
+            startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -174,13 +184,13 @@ public class MainActivity extends BaseActivity {
              */
             switch (position) {
                 case 0:
-                    fragment = ShoppingListsFragment.newInstance();
+                    fragment = ShoppingListsFragment.newInstance(mEncodedEmail);
                     break;
                 case 1:
                     fragment = MealsFragment.newInstance();
                     break;
                 default:
-                    fragment = ShoppingListsFragment.newInstance();
+                    fragment = ShoppingListsFragment.newInstance(mEncodedEmail);
                     break;
             }
 

@@ -11,8 +11,10 @@ import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingListItem;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.ui.activeLists.AddListDialogFragment;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import org.w3c.dom.Text;
 
@@ -25,25 +27,15 @@ import java.util.Map;
  */
 public class AddListItemDialogFragment extends EditListDialogFragment {
 
-    /**************************************************************************************/
-    /*                                    Constants                                       */
-    /**************************************************************************************/
-    private static final String TAG = AddListItemDialogFragment.class.getSimpleName();
-
-    /**************************************************************************************/
-    /*                                    Local Data                                      */
-    /**************************************************************************************/
-    private String mListId;
-
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
     public static AddListItemDialogFragment newInstance(ShoppingList shoppingList, String listId,
-                                                        String encodedEmail) {
+                                                        String encodedEmail,
+                                                        HashMap<String, User> sharedWithUsers) {
         AddListItemDialogFragment addListItemDialogFragment = new AddListItemDialogFragment();
-
-        Bundle bundle = newInstanceHelper(shoppingList, R.layout.dialog_add_item, listId,encodedEmail);
-        bundle.putString(Constants.KEY_LIST_ID,listId);
+        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList,
+                R.layout.dialog_add_item, listId, encodedEmail, sharedWithUsers);
         addListItemDialogFragment.setArguments(bundle);
 
         return addListItemDialogFragment;
@@ -55,9 +47,6 @@ public class AddListItemDialogFragment extends EditListDialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mListId = getArguments().getString(Constants.KEY_LIST_ID);
-
     }
 
     @Override
@@ -73,46 +62,43 @@ public class AddListItemDialogFragment extends EditListDialogFragment {
      */
     @Override
     protected void doListEdit() {
-        Log.e(TAG,"doListEdit()");
-
-        String itemName = mEditTextForList.getText().toString();
-
-        if(!itemName.equals("")) {
+        String mItemName = mEditTextForList.getText().toString();
+        /**
+         * Adds list item if the input name is not empty
+         */
+        if (!mItemName.equals("")) {
 
             Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
-            Log.e(TAG,"get reference to shoppingListItems");
             Firebase itemsRef = new Firebase(Constants.FIREBASE_URL_SHOPPING_LIST_ITEMS).child(mListId);
 
-            //Make a map for the item you are adding
-            HashMap<String, Object> updatedItemToAddMap = new HashMap<>();
+            /* Make a map for the item you are adding */
+            HashMap<String, Object> updatedItemToAddMap = new HashMap<String, Object>();
 
-            //Get push request which will produce unique Id
-            Firebase newItemRef = itemsRef.push();
-            String itemId = newItemRef.getKey();
+            /* Save push() to maintain same random Id */
+            Firebase newRef = itemsRef.push();
+            String itemId = newRef.getKey();
 
-            //Make a POJO for the item and immediately turn int into a HashMap
-            ShoppingListItem itemToAddObject = new ShoppingListItem(itemName,mEncodedEmail);
-            HashMap<String, Object> itemToAdd = (HashMap<String, Object>) new ObjectMapper().convertValue(itemToAddObject,Map.class);
+            /* Make a POJO for the item and immediately turn it into a HashMap */
+            ShoppingListItem itemToAddObject = new ShoppingListItem(mItemName, mEncodedEmail);
+            HashMap<String, Object> itemToAdd =
+                    (HashMap<String, Object>) new ObjectMapper().convertValue(itemToAddObject, Map.class);
 
-            //Add item to the update map
+
+            /* Add the item to the update map*/
             updatedItemToAddMap.put("/" + Constants.FIREBASE_LOCATION_SHOPPING_LIST_ITEMS + "/"
-            + mListId + "/" + itemId,itemToAdd);
+                    + mListId + "/" + itemId, itemToAdd);
 
-            //Make the timestamp for the last changed
-            HashMap<String, Object> changedTimestampMap = new HashMap<>();
-            changedTimestampMap.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
+            /* Update affected lists timestamps */
+            Utils.updateMapWithTimestampLastChanged(mSharedWith,
+                    mListId, mOwner, updatedItemToAddMap);
 
-            //Add the updated timestamp
-            updatedItemToAddMap.put("/" + Constants.FIREBASE_LOCATION_ACTIVE_LISTS +
-            "/" + mListId + "/" + Constants.FIREBASE_PROPERTY_TIMESTAMP_LAST_CHANGED,changedTimestampMap);
-
-            //Do the update
+            /* Do the update */
             firebaseRef.updateChildren(updatedItemToAddMap);
 
-           //Close the dialog fragment when done
+            /**
+             * Close the dialog fragment when done
+             */
             AddListItemDialogFragment.this.getDialog().cancel();
-
         }
-
     }
 }

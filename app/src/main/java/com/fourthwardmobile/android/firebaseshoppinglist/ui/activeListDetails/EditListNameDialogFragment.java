@@ -8,7 +8,9 @@ import com.firebase.client.Firebase;
 import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
+import com.fourthwardmobile.android.firebaseshoppinglist.model.User;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import java.util.HashMap;
 import java.util.Objects;
@@ -18,29 +20,19 @@ import java.util.Objects;
  * Lets user edit the list name for all copies of the current list
  */
 public class EditListNameDialogFragment extends EditListDialogFragment {
-
-    /***************************************************************************************/
-    /*                                Constants                                            */
-    /***************************************************************************************/
-    private static final String TAG = ActiveListDetailsActivity.class.getSimpleName();
-
-    /***************************************************************************************/
-    /*                                  Local Data                                         */
-    /***************************************************************************************/
-    private String mListName;
-
+    private static final String LOG_TAG = ActiveListDetailsActivity.class.getSimpleName();
+    String mListName;
 
     /**
      * Public static constructor that creates fragment and passes a bundle with data into it when adapter is created
      */
-    public static EditListNameDialogFragment newInstance(ShoppingList shoppingList,
-                                                         String listId,String encodedEmail) {
+    public static EditListNameDialogFragment newInstance(ShoppingList shoppingList, String listId,
+                                                         String encodedEmail,
+                                                         HashMap<String, User> sharedWithUsers) {
         EditListNameDialogFragment editListNameDialogFragment = new EditListNameDialogFragment();
-        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList, R.layout.dialog_edit_list,
-                listId,encodedEmail);
-
-        //Add list name to the bundle
-        bundle.putString(Constants.KEY_LIST_NAME,shoppingList.getListName());
+        Bundle bundle = EditListDialogFragment.newInstanceHelper(shoppingList,
+                R.layout.dialog_edit_list, listId, encodedEmail, sharedWithUsers);
+        bundle.putString(Constants.KEY_LIST_NAME, shoppingList.getListName());
         editListNameDialogFragment.setArguments(bundle);
         return editListNameDialogFragment;
     }
@@ -51,9 +43,7 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         mListName = getArguments().getString(Constants.KEY_LIST_NAME);
-        Log.e(TAG,"onCreate with list name = " + mListName);
     }
 
 
@@ -64,8 +54,11 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
          * superclass method that creates the dialog
          **/
         Dialog dialog = super.createDialogHelper(R.string.positive_button_edit_item);
+        /**
+         * {@link EditListDialogFragment#helpSetDefaultValueEditText(String)} is a superclass
+         * method that sets the default text of the TextView
+         */
         helpSetDefaultValueEditText(mListName);
-
         return dialog;
     }
 
@@ -73,43 +66,32 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
      * Changes the list name in all copies of the current list
      */
     protected void doListEdit() {
-
-        Log.e(TAG,"doListEdit()");
-
         final String inputListName = mEditTextForList.getText().toString();
+        /**
+         * Check that the user inputted list name is not empty, has changed the original name
+         * and that the dialog was properly initialized with the current name and id of the list.
+         */
+        if (!inputListName.equals("") && mListName != null &&
+                mListId != null && !inputListName.equals(mListName)) {
 
-        //Make sure text is n ot empty
-        if(!inputListName.equals("")) {
-            Log.e(TAG,"inputListName is not null");
-            //Make sure list name from db is not null
-            if(mListName != null && mListId != null) {
+            Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
 
-                //Make sure text has changed
-                if(!inputListName.equals(mListName)) {
-                    Log.e(TAG,"Edit list at key mListId = " +mListId);
-                    //Get Firebase ref
-                   Firebase shoppingListRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS).child(mListId);
+            /**
+             * Create map and fill it in with deep path multi write operations list
+             */
+            HashMap<String, Object> updatedListData = new HashMap<String, Object>();
 
-                    //Make hashmap for the specific properties that are changing
-                    HashMap<String,Object> updateProperties = new HashMap<>();
-                    updateProperties.put(Constants.FIREBASE_PROPERTY_LIST_NAME,inputListName);
+            /* Add the value to update at the specified property for all lists */
+            Utils.updateMapForAllWithValue(mSharedWith, mListId, mOwner, updatedListData,
+                    Constants.FIREBASE_PROPERTY_LIST_NAME, inputListName);
 
-                    //Add the timestamp for the last changed to updateProperties Hashmap
-                    HashMap<String,Object> changedTimestampMap = new HashMap<>();
-                    changedTimestampMap.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
+            /* Update affected lists timestamps */
+            Utils.updateMapWithTimestampLastChanged(mSharedWith, mListId, mOwner, updatedListData);
 
-                    //Add the updated timestamp
-                    updateProperties.put(Constants.FIREBASE_PROPERTY_TIMESTAMP_LAST_CHANGED,changedTimestampMap);
-
-                    shoppingListRef.updateChildren(updateProperties);
-                }
-
-
-            } else {
-                Log.e(TAG,"list name or list id is null");
-            }
+            /* Do a deep-path update */
+            firebaseRef.updateChildren(updatedListData);
         }
-
     }
 }
+
 

@@ -16,13 +16,16 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.firebase.client.Firebase;
 import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
 import com.fourthwardmobile.android.firebaseshoppinglist.utils.Constants;
+import com.fourthwardmobile.android.firebaseshoppinglist.utils.Utils;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Adds a new shopping list
@@ -102,40 +105,50 @@ public class AddListDialogFragment extends DialogFragment {
      * Add new active list
      */
     public void addShoppingList() {
-
-
-        //Get the string the user entered into the EditText
         String userEnteredName = mEditTextListName.getText().toString();
 
-        if(!userEnteredName.equals("")) {
+        /**
+         * If EditText input is not empty
+         */
+        if (!userEnteredName.equals("")) {
 
-            //Get Firebase reference
-            Firebase listsRef = new Firebase(Constants.FIREBASE_URL_ACTIVE_LISTS);
+            /**
+             * Create Firebase references
+             */
+            Firebase userListsRef = new Firebase(Constants.FIREBASE_URL_USER_LISTS).
+                    child(mEncodedEmail);
+            final Firebase firebaseRef = new Firebase(Constants.FIREBASE_URL);
 
-            //Get push request which will produce unique Id
-            Firebase newListRef = listsRef.push();
+            Firebase newListRef = userListsRef.push();
 
-            //Save listsRef.push to maintain same random Id
+            /* Save listsRef.push() to maintain same random Id */
             final String listId = newListRef.getKey();
 
-            //Set raw version of date to the ServerValue.TIMESTAMP value and
-            //save into timestampCreatedMap
-            HashMap<String, Object> timestampCreated = new HashMap<>();
-            timestampCreated.put(Constants.FIREBASE_PROPERTY_TIMESTAMP,ServerValue.TIMESTAMP);
+            /* HashMap for data to update */
+            HashMap<String, Object> updateShoppingListData = new HashMap<>();
 
-            //Build the shopping list
-            ShoppingList newShoppingList = new ShoppingList(userEnteredName,mEncodedEmail,
+            /**
+             * Set raw version of date to the ServerValue.TIMESTAMP value and save into
+             * timestampCreatedMap
+             */
+            HashMap<String, Object> timestampCreated = new HashMap<>();
+            timestampCreated.put(Constants.FIREBASE_PROPERTY_TIMESTAMP, ServerValue.TIMESTAMP);
+
+            /* Build the shopping list */
+            ShoppingList newShoppingList = new ShoppingList(userEnteredName, mEncodedEmail,
                     timestampCreated);
 
-            //Add shopping list
-            newListRef.setValue(newShoppingList);
+            HashMap<String, Object> shoppingListMap = (HashMap<String, Object>)
+                    new ObjectMapper().convertValue(newShoppingList, Map.class);
 
-            //Close the dialog Fragment
+            Utils.updateMapForAllWithValue(null,listId, mEncodedEmail,
+                    updateShoppingListData, "", shoppingListMap);
+
+            firebaseRef.updateChildren(updateShoppingListData);
+
+            /* Close the dialog fragment */
             AddListDialogFragment.this.getDialog().cancel();
-
         }
-
-
     }
 
 }
