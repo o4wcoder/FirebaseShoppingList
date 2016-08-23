@@ -2,6 +2,8 @@ package com.fourthwardmobile.android.firebaseshoppinglist.ui.sharing;
 
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.ListView;
 
@@ -20,6 +22,7 @@ public class AddFriendActivity extends BaseActivity {
     private AutocompleteFriendAdapter mFriendsAutocompleteAdapter;
     private ListView mListViewAutocomplete;
     private Firebase mUsersRef;
+    private String mInput;
 
 
 
@@ -42,30 +45,54 @@ public class AddFriendActivity extends BaseActivity {
          * Set interactive bits, such as click events/adapters
          */
 
-        mFriendsAutocompleteAdapter = new AutocompleteFriendAdapter(AddFriendActivity.this, User.class,
-                R.layout.single_autocomplete_item, mUsersRef.orderByChild(Constants.FIREBASE_PROPERTY_EMAIL),
-                mEncodedEmail);
+//        mFriendsAutocompleteAdapter = new AutocompleteFriendAdapter(AddFriendActivity.this, User.class,
+//                R.layout.single_autocomplete_item, mUsersRef.orderByChild(Constants.FIREBASE_PROPERTY_EMAIL),
+//                mEncodedEmail);
+//
+//        mListViewAutocomplete.setAdapter(mFriendsAutocompleteAdapter);
+//
 
-        mListViewAutocomplete.setAdapter(mFriendsAutocompleteAdapter);
+        mEditTextAddFriendEmail.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
-        /**mEditTextAddFriendEmail.addTextChangedListener(new TextWatcher() {
-        @Override
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-        }
-        @Override
-        public void onTextChanged(CharSequence s, int start, int before, int count) {
-        }
-        @Override
-        public void afterTextChanged(Editable s) {
-        }
-        });**/
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+                 /* Get the input after every textChanged event and transform it to lowercase */
+                mInput = mEditTextAddFriendEmail.getText().toString().toLowerCase();
+
+                                /* Clean up the old adapter */
+                if (mFriendsAutocompleteAdapter != null) mFriendsAutocompleteAdapter.cleanup();
+                        /* Nullify the adapter data if the input length is less than 2 characters */
+                if (mInput.equals("") || mInput.length() < 2) {
+                    mListViewAutocomplete.setAdapter(null);
+
+                                   /* Define and set the adapter otherwise. */
+                } else {
+                    mFriendsAutocompleteAdapter = new AutocompleteFriendAdapter(AddFriendActivity.this, User.class,
+                            R.layout.single_autocomplete_item, mUsersRef.orderByChild(Constants.FIREBASE_PROPERTY_EMAIL)
+                            .startAt(mInput).endAt(mInput + "~").limitToFirst(5), mEncodedEmail);
+
+                    mListViewAutocomplete.setAdapter(mFriendsAutocompleteAdapter);
+                }
+            }
+        });
 
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mFriendsAutocompleteAdapter.cleanup();
+
+        if(mFriendsAutocompleteAdapter != null) {
+            mFriendsAutocompleteAdapter.cleanup();
+        }
     }
 
     /**
