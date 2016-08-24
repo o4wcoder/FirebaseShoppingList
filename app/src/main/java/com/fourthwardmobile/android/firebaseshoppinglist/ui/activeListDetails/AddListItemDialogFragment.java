@@ -7,6 +7,7 @@ import android.widget.TextView;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
 import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
@@ -93,7 +94,14 @@ public class AddListItemDialogFragment extends EditListDialogFragment {
                     mListId, mOwner, updatedItemToAddMap);
 
             /* Do the update */
-            firebaseRef.updateChildren(updatedItemToAddMap);
+            firebaseRef.updateChildren(updatedItemToAddMap, new Firebase.CompletionListener() {
+                @Override
+                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                        /* Now that we have the timestamp, update the reversed timestamp */
+                    Utils.updateTimestampReversed(firebaseError, "AddListItem", mListId,
+                            mSharedWith, mOwner);
+                }
+            });
 
             /**
              * Close the dialog fragment when done

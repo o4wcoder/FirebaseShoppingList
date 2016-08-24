@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
 import com.firebase.client.ServerValue;
 import com.fourthwardmobile.android.firebaseshoppinglist.R;
 import com.fourthwardmobile.android.firebaseshoppinglist.model.ShoppingList;
@@ -89,7 +90,14 @@ public class EditListNameDialogFragment extends EditListDialogFragment {
             Utils.updateMapWithTimestampLastChanged(mSharedWith, mListId, mOwner, updatedListData);
 
             /* Do a deep-path update */
-            firebaseRef.updateChildren(updatedListData);
+            firebaseRef.updateChildren(updatedListData, new Firebase.CompletionListener() {
+                                @Override
+                                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                        /* Now that we have the timestamp, update the reversed timestamp */
+                                                Utils.updateTimestampReversed(firebaseError, LOG_TAG, mListId,
+                                                                mSharedWith, mOwner);
+                                    }
+                            });
         }
     }
 }

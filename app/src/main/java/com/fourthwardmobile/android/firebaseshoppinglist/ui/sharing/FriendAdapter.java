@@ -32,6 +32,7 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
     private String mListId;
     private Firebase mFirebaseRef;
     private HashMap<String, User> mSharedUsersList;
+    private HashMap<Firebase,ValueEventListener> mLocationListenerMap;
 
 
     /**
@@ -43,6 +44,7 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
         this.mActivity = activity;
         this.mListId = listId;
         mFirebaseRef = new Firebase(Constants.FIREBASE_URL);
+        mLocationListenerMap = new HashMap<Firebase, ValueEventListener>();
     }
 
     /**
@@ -90,7 +92,13 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
                             HashMap<String, Object> updatedUserData = updateFriendInSharedWith(false, friend);
 
                             /* Do a deep-path update */
-                            mFirebaseRef.updateChildren(updatedUserData);
+                            mFirebaseRef.updateChildren(updatedUserData, new Firebase.CompletionListener() {
+                                @Override
+                                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                    Utils.updateTimestampReversed(firebaseError, LOG_TAG, mListId,
+                                            mSharedUsersList, mShoppingList.getOwner());
+                                }
+                            });
                         }
                     });
                 } else {
@@ -110,7 +118,13 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
                             HashMap<String, Object> updatedUserData = updateFriendInSharedWith(true, friend);
 
                             /* Do a deep-path update */
-                            mFirebaseRef.updateChildren(updatedUserData);
+                            mFirebaseRef.updateChildren(updatedUserData, new Firebase.CompletionListener() {
+                                @Override
+                                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                                    Utils.updateTimestampReversed(firebaseError, LOG_TAG, mListId,
+                                            mSharedUsersList, mShoppingList.getOwner());
+                                }
+                            });
                         }
                     });
                 }
@@ -123,6 +137,9 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
                                 firebaseError.getMessage());
             }
         });
+
+        //Add the listener to the HashMap so that it can be removed on clenup
+        mLocationListenerMap.put(sharedFriendInShoppingListRef,listener);
 
     }
 
@@ -199,5 +216,10 @@ public class FriendAdapter extends FirebaseListAdapter<User> {
     @Override
     public void cleanup() {
         super.cleanup();
+
+        //Clean up event listeners
+        for(HashMap.Entry<Firebase,ValueEventListener> listenerToClean : mLocationListenerMap.entrySet()) {
+            listenerToClean.getKey().removeEventListener(listenerToClean.getValue());
+        }
     }
 }
